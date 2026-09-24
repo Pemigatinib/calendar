@@ -3,28 +3,261 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="0; url=calendar.html">
-<title>万年历 · 正在打开</title>
+<title>工具箱</title>
+<!--
+  ============================================================================
+  工具箱 · 导航页（首页）
+  - 单文件、零外部依赖（无 CDN / 无字体 / 无图片 / 无网络请求）
+  - 工具列表由下方 TOOLS 常量驱动；新增工具只需往数组里加一项
+  - 视觉与 calendar.html 同源（浅蓝白粉 · 玻璃拟态 · 系统字体栈）
+  ============================================================================
+-->
 <style>
-  html,body{margin:0;height:100%}
-  body{
-    display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(160deg,#f7fbff 0%,#eef5ff 50%,#fdf2f8 100%);
-    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
-    color:#1e293b;-webkit-font-smoothing:antialiased;
+  /* ===================== 设计变量（浅色 蓝白粉，与 calendar.html 同源） ===================== */
+  :root{
+    color-scheme:light;
+    --blue:#3b82f6;
+    --blue-d:#2563eb;
+    --blue-dd:#1d4ed8;
+    --blue-bg:#eff6ff;
+    --pink:#ec4899;
+    --pink-d:#db2777;
+    --pink-bg:#fdf2f8;
+    --text:#1e293b;
+    --text-dim:#475569;
+    --text-mute:#64748b;
+    --border:rgba(255,255,255,.9);
+    --radius:20px;
+    --ease:cubic-bezier(.2,.7,.3,1);
   }
-  .box{text-align:center;padding:24px}
-  .t{font-size:22px;font-weight:800;letter-spacing:.04em;margin-bottom:10px}
-  .s{font-size:14px;color:#64748b}
-  a{color:#2563eb;font-weight:600;text-decoration:none}
-  a:hover{text-decoration:underline}
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+                "Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",
+                "Noto Sans CJK SC",sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+    background:
+      radial-gradient(1100px 780px at 8% -10%, rgba(147,197,253,.55), transparent 62%),
+      radial-gradient(900px 640px at 100% 0%, rgba(249,168,212,.45), transparent 58%),
+      radial-gradient(900px 900px at 50% 122%, rgba(191,219,254,.45), transparent 64%),
+      linear-gradient(160deg,#f7fbff 0%,#eef5ff 46%,#fdf2f8 100%);
+    background-attachment:fixed;
+  }
+
+  /* 纯 CSS 氛围光斑（与 calendar.html 一致） */
+  .aura{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .aura::before,.aura::after{
+    content:"";position:absolute;border-radius:50%;filter:blur(80px);opacity:.5;
+    animation:float 26s ease-in-out infinite;
+  }
+  .aura::before{width:540px;height:540px;left:-160px;top:-180px;
+    background:radial-gradient(circle,rgba(147,197,253,.55),transparent 70%);}
+  .aura::after{width:480px;height:480px;right:-160px;top:22%;animation-delay:-12s;
+    background:radial-gradient(circle,rgba(249,168,212,.42),transparent 70%);}
+  @keyframes float{
+    0%,100%{transform:translate3d(0,0,0) scale(1);}
+    50%{transform:translate3d(0,34px,0) scale(1.08);}
+  }
+
+  /* ===================== 布局 ===================== */
+  .app{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:40px 18px 64px;}
+
+  /* 玻璃卡片基底（与 calendar.html 的 .card 一致） */
+  .card{
+    border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(255,255,255,.66));
+    border:1px solid var(--border);
+    backdrop-filter:blur(18px) saturate(140%);
+    -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:0 8px 32px rgba(59,130,246,.10), inset 0 1px 0 rgba(255,255,255,.9);
+  }
+
+  /* 主标题框：与下方网格同宽（同为 .app 直接子级，自动对齐） */
+  .title-bar{padding:24px 20px 20px;margin-bottom:22px;text-align:center;}
+  .page-title{
+    margin:0;line-height:1.15;
+    font-size:clamp(30px,7vw,44px);font-weight:800;letter-spacing:.2em;
+    background:linear-gradient(94deg,#1d4ed8,#3b82f6 42%,#a855f7 74%,#ec4899);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .page-sub{margin:12px 0 0;font-size:13.5px;color:var(--text-mute);letter-spacing:.08em;}
+
+  /* ===================== 工具卡片网格 ===================== */
+  /* auto-fill + minmax(min(...))：桌面多列、窄屏单列，且永不横向溢出 */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));
+    gap:18px;
+  }
+
+  .tool-card{
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;gap:12px;
+    padding:20px 20px 18px;border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(255,255,255,.82),rgba(255,255,255,.66));
+    border:1px solid var(--border);
+    backdrop-filter:blur(18px) saturate(140%);
+    -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:0 8px 32px rgba(59,130,246,.10), inset 0 1px 0 rgba(255,255,255,.9);
+    color:inherit;text-decoration:none;
+    transition:transform .2s var(--ease),box-shadow .26s var(--ease),border-color .26s var(--ease);
+  }
+  .tool-card:hover{
+    transform:translateY(-4px);
+    border-color:rgba(59,130,246,.45);
+    box-shadow:0 18px 42px rgba(59,130,246,.20),0 4px 12px rgba(236,72,153,.12),inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .tool-card:active{transform:translateY(-1px);}
+  .tool-card:focus-visible{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.22),0 18px 42px rgba(59,130,246,.20);}
+
+  .tc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .tc-icon{
+    width:46px;height:46px;border-radius:14px;flex:0 0 auto;
+    display:inline-flex;align-items:center;justify-content:center;color:#fff;
+    background:linear-gradient(140deg,#60a5fa,#3b82f6 55%,#ec4899);
+    box-shadow:0 6px 16px rgba(59,130,246,.28);
+  }
+  .tc-icon svg{width:24px;height:24px;display:block;}
+  .tc-tag{
+    font-size:11.5px;font-weight:700;letter-spacing:.06em;white-space:nowrap;
+    padding:3px 10px;border-radius:99px;
+    color:var(--blue-dd);background:var(--blue-bg);border:1px solid rgba(59,130,246,.28);
+  }
+  .tc-name{font-size:17px;font-weight:800;color:var(--text);}
+  .tc-desc{font-size:13px;color:var(--text-mute);line-height:1.65;}
+  .tc-arrow{
+    margin-top:auto;font-size:12.5px;font-weight:700;color:var(--blue-d);
+    display:inline-flex;align-items:center;gap:5px;
+  }
+  .tc-arrow::after{content:"→";transition:transform .2s var(--ease);}
+  .tool-card:hover .tc-arrow::after{transform:translateX(3px);}
+
+  /* 空状态 */
+  .empty{
+    grid-column:1 / -1;text-align:center;padding:40px 20px;
+    font-size:13.5px;color:var(--text-mute);line-height:1.9;
+    border-radius:var(--radius);border:1px dashed rgba(148,163,184,.42);
+    background:rgba(255,255,255,.5);
+  }
+  .empty code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px;padding:1px 6px;border-radius:6px;
+    color:var(--blue-dd);background:var(--blue-bg);
+  }
+
+  /* 页脚 */
+  .footnote{margin:26px 0 0;text-align:center;font-size:12px;color:var(--text-mute);letter-spacing:.05em;}
+
+  @media (max-width:430px){
+    .app{padding:28px 12px 48px;}
+    .title-bar{padding:20px 16px 16px;}
+    .tc-icon{width:42px;height:42px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important;transition-duration:.001ms !important;}
+  }
 </style>
 </head>
 <body>
-  <div class="box">
-    <div class="t">万年历</div>
-    <div class="s">正在打开… 如果没有自动跳转，请点 <a href="calendar.html">这里</a></div>
-  </div>
-  <script>location.replace('calendar.html');</script>
+<div class="aura" aria-hidden="true"></div>
+<div class="app">
+  <header class="card title-bar">
+    <h1 class="page-title">工具箱</h1>
+    <p class="page-sub">常用小工具集合</p>
+  </header>
+
+  <main class="grid" id="toolGrid" aria-label="工具列表"></main>
+
+  <p class="footnote">本地离线运行 · 零外部依赖</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* 内联 SVG 图标表（无外部图标库）。图标写在 HTML 文档内，
+     浏览器会将其解析进 SVG 命名空间，故无需 xmlns 声明，
+     全文不含任何网络协议前缀，确保零外部依赖。 */
+  var ICONS = {
+    calendar:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<rect x="3" y="4.5" width="18" height="16" rx="3"/>' +
+      '<path d="M3 9h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/>' +
+      '<path d="M7.5 13h3"/><path d="M7.5 16.5h3"/><path d="M13.5 13h3"/></svg>',
+    default:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/>' +
+      '<rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>'
+  };
+
+  /**
+   * 工具清单（新增工具只需往这里追加一项）：
+   *   name  工具名称
+   *   desc  一句话描述
+   *   href 相对路径（支持 tools/xxx.html，勿使用以 / 开头的绝对路径）
+   *   tag   分类标签
+   *   icon  ICONS 中的图标键（缺省用 default）
+   */
+  var TOOLS = [
+    {
+      name: '万年历',
+      desc: '阴阳合历 · 节气 · 干支 · 2020–2026 法定假期',
+      href: 'calendar.html',
+      tag: '时间',
+      icon: 'calendar'
+    }
+    /* 以后新增工具在此追加，例如：
+    { name: '计算器', desc: '常用单位换算', href: 'tools/calc.html', tag: '工具', icon: 'default' } */
+  ];
+
+  /** HTML 转义，防止属性/文本注入。 */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  /** 渲染工具卡片网格；TOOLS 为空时展示友好空状态。 */
+  function render() {
+    var grid = document.getElementById('toolGrid');
+    if (!grid) { return; }
+
+    if (!TOOLS.length) {
+      grid.innerHTML =
+        '<div class="empty">暂无工具，敬请期待～<br>' +
+        '在 <code>index.html</code> 的 <code>TOOLS</code> 数组中添加一项即可上线新工具。</div>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < TOOLS.length; i++) {
+      var t = TOOLS[i];
+      var icon = ICONS[t.icon] || ICONS['default'];
+      html +=
+        '<a class="tool-card" href="' + esc(t.href) + '" aria-label="打开 ' + esc(t.name) + '">' +
+          '<div class="tc-head">' +
+            '<span class="tc-icon" aria-hidden="true">' + icon + '</span>' +
+            (t.tag ? '<span class="tc-tag">' + esc(t.tag) + '</span>' : '') +
+          '</div>' +
+          '<div class="tc-name">' + esc(t.name) + '</div>' +
+          '<div class="tc-desc">' + esc(t.desc) + '</div>' +
+          '<span class="tc-arrow">打开</span>' +
+        '</a>';
+    }
+    grid.innerHTML = html;
+  }
+
+  render();
+})();
+</script>
 </body>
 </html>
