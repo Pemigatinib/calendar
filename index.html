@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url=calendar.html">
+<title>万年历 · 正在打开</title>
+<style>
+  html,body{margin:0;height:100%}
+  body{
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,#f7fbff 0%,#eef5ff 50%,#fdf2f8 100%);
+    font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    color:#1e293b;-webkit-font-smoothing:antialiased;
+  }
+  .box{text-align:center;padding:24px}
+  .t{font-size:22px;font-weight:800;letter-spacing:.04em;margin-bottom:10px}
+  .s{font-size:14px;color:#64748b}
+  a{color:#2563eb;font-weight:600;text-decoration:none}
+  a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="t">万年历</div>
+    <div class="s">正在打开… 如果没有自动跳转，请点 <a href="calendar.html">这里</a></div>
+  </div>
+  <script>location.replace('calendar.html');</script>
+</body>
+</html>
