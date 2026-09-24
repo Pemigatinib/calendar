@@ -74,15 +74,18 @@
   }
 
   /* ===================== 布局 ===================== */
-  .app{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:24px 18px 56px;}
+  /* 三栏整体加宽：1240 → 1320，为第 3 列假期列表腾出完整显示日期区间的空间，
+     日历列仍由 minmax(0,1fr) 吸收剩余宽度（≥1280 视口下单格仍远大于 44px）。 */
+  .app{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:24px 18px 56px;}
 
-  .brand{display:flex;flex-direction:column;gap:2px;margin-right:auto;}
-  .brand b{
-    font-size:20px;font-weight:800;letter-spacing:.04em;
+  /* 页面主标题：置于玻璃卡片框内，外框宽度与下方三栏(.layout)完全一致，文字居中 */
+  .title-bar{padding:16px;margin-bottom:18px;}
+  .page-title{
+    margin:0;text-align:center;line-height:1.15;
+    font-size:clamp(28px,7vw,40px);font-weight:800;letter-spacing:.2em;
     background:linear-gradient(94deg,#1d4ed8,#3b82f6 42%,#a855f7 74%,#ec4899);
     -webkit-background-clip:text;background-clip:text;color:transparent;
   }
-  .brand span{font-size:11.5px;color:var(--text-mute);letter-spacing:.16em;}
 
   .card{
     border-radius:var(--radius);
@@ -93,16 +96,15 @@
     box-shadow:0 8px 32px rgba(59,130,246,.10), inset 0 1px 0 rgba(255,255,255,.9);
   }
 
-  .toolbar{
-    display:flex;flex-wrap:wrap;gap:14px;align-items:center;
-    padding:14px 16px;margin-bottom:18px;
-  }
-  .controls{display:flex;flex-wrap:wrap;gap:9px;align-items:center;}
+  /* 控制行：已移入日历卡内部、星期表头之上，水平居中 */
+  .controls{display:flex;flex-wrap:wrap;gap:9px;align-items:center;justify-content:center;margin-bottom:16px;}
+  /* 翻页按钮归为一组：组内 8px，与后接下拉之间留更大间距（9+5=14px）形成分组感 */
+  .nav-group{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;margin-right:5px;flex:0 0 auto;}
 
   .btn{
     appearance:none;cursor:pointer;font:inherit;font-size:13.5px;
     color:var(--text);padding:9px 14px;border-radius:12px;
-    min-height:44px;display:inline-flex;align-items:center;justify-content:center;
+    min-height:44px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
     background:rgba(255,255,255,.72);
     border:1px solid rgba(148,163,184,.35);
     transition:transform .18s var(--ease),box-shadow .24s var(--ease),
@@ -124,7 +126,7 @@
   .select{
     appearance:none;font:inherit;font-size:13.5px;color:var(--text);
     padding:9px 34px 9px 14px;border-radius:12px;cursor:pointer;
-    min-height:44px;color-scheme:light;
+    min-height:44px;color-scheme:light;flex:0 0 auto;
     background:#ffffff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%232563eb' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
     border:1px solid rgba(148,163,184,.4);
     transition:border-color .24s var(--ease),box-shadow .24s var(--ease),background-color .24s var(--ease);
@@ -134,9 +136,12 @@
   .select option{background:#ffffff;color:#1e293b;}
 
   /* ===================== 布局（≥1280 三栏：日历 | 倒计时+选中日期 | 假期列表） ===================== */
+  /* 第 3 列（假期列表）上限放宽到 312px：容量 = 最长日期文本(158.8) + 含调休标签(47.5)
+     + 圆点(8) + 两处 gap(20) + 内边距(22) + 边框(2) + 卡片内边距(32) + 卡片边框(2) ≈ 292px，
+     另留约 20px 余量，确保「YYYY/MM/DD – YYYY/MM/DD · N 天」与「含调休」完整显示、不被省略号截断。 */
   .layout{
     display:grid;
-    grid-template-columns:minmax(0,1fr) minmax(232px,268px) minmax(232px,268px);
+    grid-template-columns:minmax(0,1fr) minmax(232px,268px) minmax(248px,312px);
     gap:18px;align-items:start;
   }
   .calendar-card{grid-column:1;grid-row:1;}
@@ -282,7 +287,9 @@
     background:linear-gradient(180deg,#f472b6,#ec4899);box-shadow:0 0 0 2px rgba(236,72,153,.15);}
   .h-body{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;}
   .h-name{font-size:13.5px;font-weight:700;color:var(--text);}
-  .h-date{font-size:11.5px;color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* 日期范围与天数完整显示：不换行、不省略（不再用 ellipsis 截断）。
+     第 3 列宽度已按最长文本「YYYY/MM/DD – YYYY/MM/DD · N 天」+「含调休」标签实测放足。 */
+  .h-date{font-size:11.5px;color:var(--text-mute);white-space:nowrap;}
   .h-tag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px;flex:0 0 auto;
     color:var(--work-fg);background:var(--work-bg);border:1px solid rgba(59,130,246,.3);}
   .empty{font-size:12.5px;color:var(--text-mute);line-height:1.7;}
@@ -304,10 +311,10 @@
   }
   @media (max-width:768px){
     .app{padding:16px 12px 40px;}
-    .toolbar{padding:12px;}
-    .controls{gap:7px;}
-    .brand{width:100%;margin-right:0;margin-bottom:2px;}
-    .btn,.select{font-size:13px;padding:8px 12px;}
+    .controls{gap:7px;margin-bottom:14px;}
+    .btn{font-size:13px;padding:8px 12px;}
+    /* .select 单独设置：保留右侧 32px 为箭头留出安全区（箭头位于 right 12px、宽 12px） */
+    .select{font-size:13px;padding:8px 32px 8px 12px;}
     .cell{min-height:60px;border-radius:12px;padding:6px;}
     .cell .d{font-size:17px;}
     .cell .l{font-size:10px;}
@@ -329,22 +336,21 @@
 <body>
 <div class="aura" aria-hidden="true"></div>
 <div class="app">
-  <div class="toolbar card">
-    <div class="brand">
-      <b>万年历</b>
-      <span>阴阳合历 · 节气 · 干支 · 法定假期</span>
-    </div>
-    <div class="controls">
-      <button class="btn" id="prevMonth" aria-label="上一月">‹ 上月</button>
-      <select class="select" id="yearSelect" aria-label="选择年份"></select>
-      <select class="select" id="monthSelect" aria-label="选择月份"></select>
-      <button class="btn" id="nextMonth" aria-label="下一月">下月 ›</button>
-      <button class="btn primary" id="todayBtn">今天</button>
-    </div>
+  <div class="card title-bar">
+    <h1 class="page-title">万年历</h1>
   </div>
 
   <div class="layout">
     <section class="card calendar-card" aria-label="日历">
+      <div class="controls">
+        <div class="nav-group" role="group" aria-label="月份切换">
+          <button class="btn" id="prevMonth" aria-label="上一月">‹ 上月</button>
+          <button class="btn" id="nextMonth" aria-label="下一月">下月 ›</button>
+        </div>
+        <select class="select" id="yearSelect" aria-label="选择年份"></select>
+        <select class="select" id="monthSelect" aria-label="选择月份"></select>
+        <button class="btn primary" id="todayBtn">今天</button>
+      </div>
       <div class="weekhead">
         <div>一</div><div>二</div><div>三</div><div>四</div>
         <div>五</div><div class="we">六</div><div class="we">日</div>
@@ -451,19 +457,64 @@
     '12-8':'腊八', '12-23':'小年'
   };
 
-  /** 公历节日点缀（键为 月-日）。 */
+  /**
+   * 公历节日起始年限表（键为 月-日，值为 { name, from }）。
+   * 每个节日带起始年份 from：**早于 from 的年份不显示该节日**，
+   * 避免出现「1949 年前就有国庆节」这类与史实不符的展示。
+   * 起始年依据（史实核定）：
+   *   - 元旦    from 1912：中国自 1912 年起采用公历纪年，1 月 1 日为元旦；
+   *   - 妇女节  from 1949：1949 年 12 月政务院规定 3 月 8 日为妇女节；
+   *   - 植树节  from 1979：1979 年 2 月五届全国人大常委会第六次会议决定；
+   *   - 劳动节  from 1949：1949 年 12 月政务院规定；
+   *   - 青年节  from 1949：1949 年 12 月政务院规定；
+   *   - 儿童节  from 1949：1949 年 12 月政务院规定；
+   *   - 建党节  from 1941：1941 年 6 月中共中央确定 7 月 1 日为诞生纪念日；
+   *   - 建军节  from 1933：1933 年 7 月临时中央政府决定 8 月 1 日为建军纪念日；
+   *   - 教师节  from 1985：1985 年 1 月六届全国人大常委会第九次会议决定；
+   *   - 国庆节  from 1949：1949 年 10 月 1 日中华人民共和国成立；
+   *   - 圣诞节  不设限（from: -Infinity）：西方传统宗教节日，无中国起始年。
+   * 农历传统节日（LUNAR_FESTIVALS）与二十四节气为传统/天文现象，不受年份限制。
+   */
   var SOLAR_FESTIVALS = {
-    '1-1':'元旦', '3-8':'妇女节', '3-12':'植树节', '5-1':'劳动节',
-    '5-4':'青年节', '6-1':'儿童节', '7-1':'建党节', '8-1':'建军节',
-    '9-10':'教师节', '10-1':'国庆节', '12-25':'圣诞节'
+    '1-1':  { name: '元旦',   from: 1912 },
+    '3-8':  { name: '妇女节', from: 1949 },
+    '3-12': { name: '植树节', from: 1979 },
+    '5-1':  { name: '劳动节', from: 1949 },
+    '5-4':  { name: '青年节', from: 1949 },
+    '6-1':  { name: '儿童节', from: 1949 },
+    '7-1':  { name: '建党节', from: 1941 },
+    '8-1':  { name: '建军节', from: 1933 },
+    '9-10': { name: '教师节', from: 1985 },
+    '10-1': { name: '国庆节', from: 1949 },
+    '12-25':{ name: '圣诞节', from: -Infinity }
   };
+
+  /**
+   * 取某日的公历节日名；早于该节日起始年份时返回 null。
+   * 日历格（dayLabel）与详情卡（renderDetails）共用此函数，
+   * 保证两处判断一致，不会出现"格子不显示、详情卡却显示"的情况。
+   */
+  function solarFestival(y, m, d) {
+    var f = SOLAR_FESTIVALS[m + '-' + d];
+    return (f && y >= f.from) ? f.name : null;
+  }
 
   /* --------------------------------------------------------------------------
      法定节假日数据（结构化常量，便于后续手动追加新年份）
      --------------------------------------------------------------------------
-     数据来源：
+     数据来源（均为国务院办公厅通知，日期已逐条核实）：
+       - 2020 年：国办发明电〔2019〕16号（2019-11-21 发布）
+       - 2021 年：国办发明电〔2020〕27号（2020-11-25 发布）
+       - 2022 年：国办发明电〔2021〕11号（2021-10-25 发布）
+       - 2023 年：国办发明电〔2022〕16号（2022-12-08 发布）
+       - 2024 年：国办发明电〔2023〕7号（2023-10-25 发布）
        - 2025 年：《国务院办公厅关于 2025 年部分节假日安排的通知》（2024-11-12 发布）
        - 2026 年：《国务院办公厅关于 2026 年部分节假日安排的通知》（2025-11-04 发布）
+     特别说明：
+       - 2020 年春节：年度通知为 1/24–1/30（7 天）。2020 年因新冠疫情实际曾延长至 2/2，
+         但属临时调整、非年度安排通知，故此处采用原通知数据。
+       - 2022/12/31 为 2023 年元旦假期（2022/12/31–2023/01/02）首日，按发布年度计入 2022；
+         2023 年元旦仅记 1/1 与 1/2，两天不重复。
      结构说明：
        HOLIDAYS[年份] = {
          year,                                   // 年份
@@ -472,11 +523,149 @@
        }
      如何追加新年份：在下方对象中新增一个年份键，按同样格式录入 offDays / workDays
        即可。假期区间列表与倒计时会由 offDays 自动推导，无需重复书写。
-     数据覆盖说明：目前仅含 2025、2026 两年（2027 年及以后的安排国务院尚未发布，
+     数据覆盖说明：目前含 2020–2026 年（2027 年及以后的安排国务院尚未发布，
        切勿编造；公布后按上述方式手动追加即可）。
      若某年份无数据，页面会优雅降级（不显示休/班角标、假期区给出提示，不报错）。
      -------------------------------------------------------------------------- */
   var HOLIDAYS = {
+    2020: {
+      year: 2020,
+      // 国办发明电〔2019〕16号（2019-11-21 发布）
+      offDays: {
+        // 元旦：2020-01-01
+        '2020-01-01': '元旦',
+        // 春节：2020-01-24~2020-01-30
+        '2020-01-24': '春节', '2020-01-25': '春节', '2020-01-26': '春节', '2020-01-27': '春节',
+        '2020-01-28': '春节', '2020-01-29': '春节', '2020-01-30': '春节',
+        // 清明节：2020-04-04~2020-04-06
+        '2020-04-04': '清明节', '2020-04-05': '清明节', '2020-04-06': '清明节',
+        // 劳动节：2020-05-01~2020-05-05
+        '2020-05-01': '劳动节', '2020-05-02': '劳动节', '2020-05-03': '劳动节', '2020-05-04': '劳动节',
+        '2020-05-05': '劳动节',
+        // 端午节：2020-06-25~2020-06-27
+        '2020-06-25': '端午节', '2020-06-26': '端午节', '2020-06-27': '端午节',
+        // 国庆节、中秋节：2020-10-01~2020-10-08
+        '2020-10-01': '国庆节、中秋节', '2020-10-02': '国庆节、中秋节', '2020-10-03': '国庆节、中秋节', '2020-10-04': '国庆节、中秋节',
+        '2020-10-05': '国庆节、中秋节', '2020-10-06': '国庆节、中秋节', '2020-10-07': '国庆节、中秋节', '2020-10-08': '国庆节、中秋节'
+      },
+      workDays: {
+        '2020-01-19': '春节调休', '2020-02-01': '春节调休', '2020-04-26': '劳动节调休',
+        '2020-05-09': '劳动节调休', '2020-06-28': '端午节调休', '2020-09-27': '国庆节、中秋节调休',
+        '2020-10-10': '国庆节、中秋节调休'
+      }
+    },
+    2021: {
+      year: 2021,
+      // 国办发明电〔2020〕27号（2020-11-25 发布）
+      offDays: {
+        // 元旦：2021-01-01~2021-01-03
+        '2021-01-01': '元旦', '2021-01-02': '元旦', '2021-01-03': '元旦',
+        // 春节：2021-02-11~2021-02-17
+        '2021-02-11': '春节', '2021-02-12': '春节', '2021-02-13': '春节', '2021-02-14': '春节',
+        '2021-02-15': '春节', '2021-02-16': '春节', '2021-02-17': '春节',
+        // 清明节：2021-04-03~2021-04-05
+        '2021-04-03': '清明节', '2021-04-04': '清明节', '2021-04-05': '清明节',
+        // 劳动节：2021-05-01~2021-05-05
+        '2021-05-01': '劳动节', '2021-05-02': '劳动节', '2021-05-03': '劳动节', '2021-05-04': '劳动节',
+        '2021-05-05': '劳动节',
+        // 端午节：2021-06-12~2021-06-14
+        '2021-06-12': '端午节', '2021-06-13': '端午节', '2021-06-14': '端午节',
+        // 中秋节：2021-09-19~2021-09-21
+        '2021-09-19': '中秋节', '2021-09-20': '中秋节', '2021-09-21': '中秋节',
+        // 国庆节：2021-10-01~2021-10-07
+        '2021-10-01': '国庆节', '2021-10-02': '国庆节', '2021-10-03': '国庆节', '2021-10-04': '国庆节',
+        '2021-10-05': '国庆节', '2021-10-06': '国庆节', '2021-10-07': '国庆节'
+      },
+      workDays: {
+        '2021-02-07': '春节调休', '2021-02-20': '春节调休', '2021-04-25': '劳动节调休',
+        '2021-05-08': '劳动节调休', '2021-09-18': '中秋节调休', '2021-09-26': '国庆节调休',
+        '2021-10-09': '国庆节调休'
+      }
+    },
+    2022: {
+      year: 2022,
+      // 国办发明电〔2021〕11号（2021-10-25 发布）
+      offDays: {
+        // 元旦：2022-01-01~2022-01-03
+        '2022-01-01': '元旦', '2022-01-02': '元旦', '2022-01-03': '元旦',
+        // 春节：2022-01-31~2022-02-06
+        '2022-01-31': '春节', '2022-02-01': '春节', '2022-02-02': '春节', '2022-02-03': '春节',
+        '2022-02-04': '春节', '2022-02-05': '春节', '2022-02-06': '春节',
+        // 清明节：2022-04-03~2022-04-05
+        '2022-04-03': '清明节', '2022-04-04': '清明节', '2022-04-05': '清明节',
+        // 劳动节：2022-04-30~2022-05-04
+        '2022-04-30': '劳动节', '2022-05-01': '劳动节', '2022-05-02': '劳动节', '2022-05-03': '劳动节',
+        '2022-05-04': '劳动节',
+        // 端午节：2022-06-03~2022-06-05
+        '2022-06-03': '端午节', '2022-06-04': '端午节', '2022-06-05': '端午节',
+        // 中秋节：2022-09-10~2022-09-12
+        '2022-09-10': '中秋节', '2022-09-11': '中秋节', '2022-09-12': '中秋节',
+        // 国庆节：2022-10-01~2022-10-07
+        '2022-10-01': '国庆节', '2022-10-02': '国庆节', '2022-10-03': '国庆节', '2022-10-04': '国庆节',
+        '2022-10-05': '国庆节', '2022-10-06': '国庆节', '2022-10-07': '国庆节',
+        // 元旦：2022-12-31
+        '2022-12-31': '元旦'
+      },
+      workDays: {
+        '2022-01-29': '春节调休', '2022-01-30': '春节调休', '2022-04-02': '清明节调休',
+        '2022-04-24': '劳动节调休', '2022-05-07': '劳动节调休', '2022-10-08': '国庆节调休',
+        '2022-10-09': '国庆节调休'
+      }
+    },
+    2023: {
+      year: 2023,
+      // 国办发明电〔2022〕16号（2022-12-08 发布）
+      offDays: {
+        // 元旦：2023-01-01~2023-01-02
+        '2023-01-01': '元旦', '2023-01-02': '元旦',
+        // 春节：2023-01-21~2023-01-27
+        '2023-01-21': '春节', '2023-01-22': '春节', '2023-01-23': '春节', '2023-01-24': '春节',
+        '2023-01-25': '春节', '2023-01-26': '春节', '2023-01-27': '春节',
+        // 清明节：2023-04-05
+        '2023-04-05': '清明节',
+        // 劳动节：2023-04-29~2023-05-03
+        '2023-04-29': '劳动节', '2023-04-30': '劳动节', '2023-05-01': '劳动节', '2023-05-02': '劳动节',
+        '2023-05-03': '劳动节',
+        // 端午节：2023-06-22~2023-06-24
+        '2023-06-22': '端午节', '2023-06-23': '端午节', '2023-06-24': '端午节',
+        // 中秋节、国庆节：2023-09-29~2023-10-06
+        '2023-09-29': '中秋节、国庆节', '2023-09-30': '中秋节、国庆节', '2023-10-01': '中秋节、国庆节', '2023-10-02': '中秋节、国庆节',
+        '2023-10-03': '中秋节、国庆节', '2023-10-04': '中秋节、国庆节', '2023-10-05': '中秋节、国庆节', '2023-10-06': '中秋节、国庆节'
+      },
+      workDays: {
+        '2023-01-28': '春节调休', '2023-01-29': '春节调休', '2023-04-23': '劳动节调休',
+        '2023-05-06': '劳动节调休', '2023-06-25': '端午节调休', '2023-10-07': '中秋节、国庆节调休',
+        '2023-10-08': '中秋节、国庆节调休'
+      }
+    },
+    2024: {
+      year: 2024,
+      // 国办发明电〔2023〕7号（2023-10-25 发布）
+      offDays: {
+        // 元旦：2024-01-01
+        '2024-01-01': '元旦',
+        // 春节：2024-02-10~2024-02-17
+        '2024-02-10': '春节', '2024-02-11': '春节', '2024-02-12': '春节', '2024-02-13': '春节',
+        '2024-02-14': '春节', '2024-02-15': '春节', '2024-02-16': '春节', '2024-02-17': '春节',
+        // 清明节：2024-04-04~2024-04-06
+        '2024-04-04': '清明节', '2024-04-05': '清明节', '2024-04-06': '清明节',
+        // 劳动节：2024-05-01~2024-05-05
+        '2024-05-01': '劳动节', '2024-05-02': '劳动节', '2024-05-03': '劳动节', '2024-05-04': '劳动节',
+        '2024-05-05': '劳动节',
+        // 端午节：2024-06-10
+        '2024-06-10': '端午节',
+        // 中秋节：2024-09-15~2024-09-17
+        '2024-09-15': '中秋节', '2024-09-16': '中秋节', '2024-09-17': '中秋节',
+        // 国庆节：2024-10-01~2024-10-07
+        '2024-10-01': '国庆节', '2024-10-02': '国庆节', '2024-10-03': '国庆节', '2024-10-04': '国庆节',
+        '2024-10-05': '国庆节', '2024-10-06': '国庆节', '2024-10-07': '国庆节'
+      },
+      workDays: {
+        '2024-02-04': '春节调休', '2024-02-18': '春节调休', '2024-04-07': '清明节调休',
+        '2024-04-28': '劳动节调休', '2024-05-11': '劳动节调休', '2024-09-14': '中秋节调休',
+        '2024-09-29': '国庆节调休', '2024-10-12': '国庆节调休'
+      }
+    },
     2025: {
       year: 2025,
       offDays: {
@@ -967,7 +1156,8 @@
     var lfest = lunarFestival(lunar);
     if (lfest) return { text: lfest, kind: 'fest' };
 
-    var sfest = SOLAR_FESTIVALS[m + '-' + d];
+    // 公历节日：早于起始年份不显示（如 1949 年前无国庆节）
+    var sfest = solarFestival(y, m, d);
     if (sfest) return { text: sfest, kind: 'fest' };
 
     if (lunar) {
@@ -1049,6 +1239,7 @@
 
   /* DOM 引用 */
   var gridEl = document.getElementById('grid');
+  var calCard = document.querySelector('.calendar-card'); // 滚轮切月的监听区域
   var yearSelect = document.getElementById('yearSelect');
   var monthSelect = document.getElementById('monthSelect');
   var countCard = document.getElementById('countCard');
@@ -1169,7 +1360,7 @@
 
     var term = getTermName(y, m, d);
     var lfest = lunarFestival(lunar);
-    var sfest = SOLAR_FESTIVALS[m + '-' + d];
+    var sfest = solarFestival(y, m, d); // 与 dayLabel 共用，含起始年份判断
     var festText = '—';
     if (term) festText = term + '（节气）';
     else if (lfest) festText = lfest;
@@ -1262,14 +1453,18 @@
         next.days + ' 天' + (next.hasMakeup ? '（含调休）' : '') + '</div>';
   }
 
-  /** 假期区间文本，如「2026/02/15 – 02/23」。 */
+  /**
+   * 假期区间文本。起止均写全年份，例如「2026/09/25 – 2026/09/27」；
+   * 单日假期只显示一个日期（不出现冗余的「– 同日」）；
+   * 跨月/跨年同样写全：如「2023/09/29 – 2023/10/06」「2022/12/31 – 2023/01/02」。
+   */
   function fmtRange(r) {
     var s = r.start, e = r.end;
-    var head = s.getFullYear() + '/' + pad2(s.getMonth() + 1) + '/' + pad2(s.getDate());
-    var tail = (s.getMonth() === e.getMonth())
-      ? pad2(e.getDate())
-      : pad2(e.getMonth() + 1) + '/' + pad2(e.getDate());
-    return head + ' – ' + tail;
+    var fmt = function (dt) {
+      return dt.getFullYear() + '/' + pad2(dt.getMonth() + 1) + '/' + pad2(dt.getDate());
+    };
+    var head = fmt(s);
+    return sameYMD(s, e) ? head : head + ' – ' + fmt(e); // 单日仅显示一个日期
   }
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
@@ -1351,9 +1546,41 @@
     renderHolidayList();
   }
 
+  /* 滚轮切月：在日历卡区域内滚动滚轮 → 上一月 / 下一月。
+     采用「累积阈值 + 触发后锁定」防抖，兼容触摸板惯性小步滚动，
+     并复用 shiftMonth(delta) 以保留 1901–2100 边界钳制与既有渲染/动效流程。 */
+  var WHEEL_THRESHOLD = 50;   // 累积 |deltaY| 超过该像素值才触发一次切月
+  var WHEEL_LOCK_MS = 360;    // 触发后锁定窗口（ms），期间忽略后续滚轮事件
+  var wheelAccum = 0;         // 纵向滚动累积量
+  var wheelLockUntil = 0;     // 锁定截止时间戳（ms）
+
+  function onCalendarWheel(e) {
+    var dy = e.deltaY;
+    // 归一化不同 deltaMode：0=像素、1=行、2=页
+    if (e.deltaMode === 1) { dy *= 16; }
+    else if (e.deltaMode === 2) { dy *= 100; }
+    if (Math.abs(dy) < 1) { return; } // 纯横向滚动：不拦截、不切月
+
+    e.preventDefault(); // 阻止页面跟随一起滚动
+
+    var now = Date.now();
+    if (now < wheelLockUntil) { return; } // 锁定窗口内忽略（防惯性连翻）
+
+    wheelAccum += dy;
+    if (Math.abs(wheelAccum) < WHEEL_THRESHOLD) { return; } // 未达阈值不切月
+
+    var delta = wheelAccum < 0 ? -1 : 1; // 上滚(deltaY<0)=上一月，下滚=下一月
+    wheelAccum = 0;
+    wheelLockUntil = now + WHEEL_LOCK_MS;
+    shiftMonth(delta);
+  }
+
   function bindEvents() {
     document.getElementById('prevMonth').addEventListener('click', function () { shiftMonth(-1); });
     document.getElementById('nextMonth').addEventListener('click', function () { shiftMonth(1); });
+
+    // 滚轮切月：仅绑定在日历卡区域，非 passive 以便 preventDefault 阻止页面滚动
+    if (calCard) { calCard.addEventListener('wheel', onCalendarWheel, { passive: false }); }
 
     document.getElementById('todayBtn').addEventListener('click', function () {
       state.viewYear = today.getFullYear();
