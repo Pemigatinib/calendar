@@ -198,6 +198,13 @@
       '<path d="M3 10.5 12 3l9 7.5"/>' +
       '<path d="M5 9.5V20h14V9.5"/>' +
       '<path d="M9.5 20v-6h5v6"/></svg>',
+    calc:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<rect x="4" y="2.5" width="16" height="19" rx="3"/>' +
+      '<rect x="7.5" y="5.5" width="9" height="3.5" rx="1"/>' +
+      '<path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/>' +
+      '<path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg>',
     default:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -227,9 +234,15 @@
       href: 'tools/loan.html',
       tag: '理财',
       icon: 'loan'
+    },
+    {
+      name: '科学计算器',
+      desc: '四则运算 · 三角函数 · 对数与幂运算 · 括号与历史记录',
+      href: 'tools/calc.html',
+      tag: '数学',
+      icon: 'calc'
     }
-    /* 以后新增工具在此追加，例如：
-    { name: '计算器', desc: '常用单位换算', href: 'tools/calc.html', tag: '工具', icon: 'default' } */
+    /* 以后新增工具只需在数组末尾追加一项（name / desc / href / tag / icon）即可。 */
   ];
 
   /** HTML 转义，防止属性/文本注入。 */
