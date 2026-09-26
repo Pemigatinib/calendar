@@ -206,6 +206,12 @@
       '<rect x="7.5" y="5.5" width="9" height="3.5" rx="1"/>' +
       '<path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/>' +
       '<path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></svg>',
+    ledger:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3.5 6A2.5 2.5 0 0 1 6 3.5h12.5v17H6A2.5 2.5 0 0 0 3.5 23z"/>' +
+      '<path d="M3.5 6v12"/>' +
+      '<path d="M8.5 8.5h7"/><path d="M8.5 12h7"/><path d="M8.5 15.5h4"/></svg>',
     default:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -242,6 +248,13 @@
       href: 'tools/calc.html',
       tag: '数学',
       icon: 'calc'
+    },
+    {
+      name: '记账本',
+      desc: '收支流水 · 月度预算 · 分类占比 · CSV 与 JSON 备份',
+      href: 'tools/ledger.html',
+      tag: '记账',
+      icon: 'ledger'
     }
     /* 以后新增工具只需在数组末尾追加一项（name / desc / href / tag / icon）即可。 */
   ];
