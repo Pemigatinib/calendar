@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjM2I4MmY2Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjZWM0ODk5Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9InVybCgjZykiLz48cmVjdCB4PSIxNSIgeT0iMTciIHdpZHRoPSIzNCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSIjZmZmIi8+PHJlY3QgeD0iMTUiIHk9IjI5LjUiIHdpZHRoPSIzNCIgaGVpZ2h0PSI1IiByeD0iMi41IiBmaWxsPSIjZGJlYWZlIi8+PHJlY3QgeD0iMTUiIHk9IjQyIiB3aWR0aD0iMTkiIGhlaWdodD0iNSIgcng9IjIuNSIgZmlsbD0iI2Y5YThkNCIvPjwvc3ZnPg==">
+<title>文本工具箱 · 工具箱</title>
+<!--
+  ============================================================================
+  文本工具箱（工具箱第五件工具）
+  - 单文件、零外部依赖（无 CDN / 无字体库 / 无图片 / 无网络请求），双击即可离线运行
+  - 九项实时统计 + 四组操作（大小写 / 清洗排序 / 编码解码 / JSON）
+  - Base64 与 UTF-8 编解码全部自写，不依赖 TextEncoder / btoa 的兼容行为
+  - 视觉与 index.html / calendar / loan / calc / ledger 同源（浅蓝白粉 · 玻璃拟态）
+  ---------------------------------------------------------------------------
+  口径约定（核心，勿改）
+  1. 「字符数」按 Unicode 码点计（Array.from(text).length）⇒ emoji 等代理对算 1 个。
+  2. 「汉字」判定按显式码点区间表 isHan()（见下方注释），可逐条复算。
+  3. 「英文单词」= /[A-Za-z][A-Za-z'’-]*/g 的匹配数（"don't"、"well-known" 各算 1 个）。
+  4. 「数字串」= /[0-9]+/g 的匹配数。
+  5. 「行数」= 输入非空时 text.split(/\r\n|\r|\n/).length，空输入为 0。
+     「非空行数」= 其中 trim 后非空的行数。
+  6. 「UTF-8 字节」按 Unicode 标准手算（ASCII 1 / 2 字节 / 3 字节 / 代理对 4 字节，
+     孤立代理按替换字符 U+FFFD 计 3 字节）。
+  7. 「阅读时长」= round((汉字数 + 英文单词数) / 300 * 60) 秒（300 字词/分钟）。
+  8. HTML 反转义只做**单次**解码（&amp;lt; → &lt;，不会二次解成 <）。
+  9. 全角/半角只处理「全角 ASCII 变体」U+FF01–U+FF5E ↔ U+0021–U+007E（偏移 0xFEE0），
+     以及全角空格 U+3000 ↔ U+0020。中文标点（。、《》、"" 等）**不在该区间，不会被转换**。
+     ！！注意：中文全角感叹号是 U+FF01（会被转），中文句号是 U+3002（不会转）。
+ 10. Base64 按 UTF-8 编码后再做 base64；解码严格校验字符集与长度，非法即报错不静默。
+  ============================================================================
+-->
+<style>
+  /* ===================== 设计变量（浅色 蓝白粉，与现有页面同源） ===================== */
+  :root{
+    color-scheme:light;
+    --blue:#3b82f6;
+    --blue-d:#2563eb;
+    --blue-dd:#1d4ed8;
+    --blue-bg:#eff6ff;
+    --pink:#ec4899;
+    --pink-d:#db2777;
+    --pink-bg:#fdf2f8;
+    --green:#0f9d76;
+    --red:#e11d48;
+    --text:#1e293b;
+    --text-dim:#475569;
+    --text-mute:#64748b;
+    --border:rgba(255,255,255,.9);
+    --line:rgba(148,163,184,.28);
+    --radius:20px;
+    --ease:cubic-bezier(.2,.7,.3,1);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  [hidden]{display:none !important;}
+  body{
+    margin:0;
+    min-height:100vh;
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+                "Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC",
+                "Noto Sans CJK SC",sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+    background:
+      radial-gradient(1100px 780px at 8% -10%, rgba(147,197,253,.55), transparent 62%),
+      radial-gradient(900px 640px at 100% 0%, rgba(249,168,212,.45), transparent 58%),
+      radial-gradient(900px 900px at 50% 122%, rgba(191,219,254,.45), transparent 64%),
+      linear-gradient(160deg,#f7fbff 0%,#eef5ff 46%,#fdf2f8 100%);
+    background-attachment:fixed;
+  }
+
+  /* 纯 CSS 氛围光斑（与现有页面一致） */
+  .aura{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .aura::before,.aura::after{
+    content:"";position:absolute;border-radius:50%;filter:blur(80px);opacity:.5;
+    animation:float 26s ease-in-out infinite;
+  }
+  .aura::before{width:540px;height:540px;left:-160px;top:-180px;
+    background:radial-gradient(circle,rgba(147,197,253,.55),transparent 70%);}
+  .aura::after{width:480px;height:480px;right:-160px;top:22%;animation-delay:-12s;
+    background:radial-gradient(circle,rgba(249,168,212,.42),transparent 70%);}
+  @keyframes float{
+    0%,100%{transform:translate3d(0,0,0) scale(1);}
+    50%{transform:translate3d(0,34px,0) scale(1.08);}
+  }
+
+  /* ===================== 布局 ===================== */
+  .app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:20px 18px 64px;}
+
+  .card{
+    border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(255,255,255,.80),rgba(255,255,255,.66));
+    border:1px solid var(--border);
+    backdrop-filter:blur(18px) saturate(140%);
+    -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:0 8px 32px rgba(59,130,246,.10), inset 0 1px 0 rgba(255,255,255,.9);
+  }
+
+  /* 返回工具箱 */
+  .back{
+    display:inline-flex;align-items:center;gap:6px;
+    margin-bottom:14px;padding:8px 14px;border-radius:12px;
+    font-size:13.5px;font-weight:700;text-decoration:none;
+    color:var(--blue-dd);background:rgba(255,255,255,.72);
+    border:1px solid rgba(59,130,246,.24);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    transition:transform .18s var(--ease),box-shadow .24s var(--ease),background .24s var(--ease);
+  }
+  .back:hover{transform:translateX(-2px);background:#fff;box-shadow:0 6px 18px rgba(59,130,246,.16);}
+
+  .title-bar{padding:20px 20px 18px;margin-bottom:18px;text-align:center;}
+  .page-title{
+    margin:0;line-height:1.15;
+    font-size:clamp(24px,5.4vw,36px);font-weight:800;letter-spacing:.06em;
+    background:linear-gradient(94deg,#1d4ed8,#3b82f6 42%,#a855f7 74%,#ec4899);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .page-sub{margin:10px 0 0;font-size:13px;color:var(--text-mute);letter-spacing:.06em;}
+
+  .panel{padding:18px;margin-bottom:18px;}
+  .sec-title{
+    font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--text-mute);
+    text-transform:uppercase;margin:0;
+  }
+  .sec-title .st-x{float:right;letter-spacing:0;text-transform:none;font-weight:600;}
+  .hint{font-size:11.5px;color:var(--text-mute);line-height:1.65;margin:10px 0 0;}
+  .hint code{font-family:var(--mono);font-size:11px;
+    padding:1px 5px;border-radius:6px;color:var(--blue-dd);background:var(--blue-bg);}
+  .hint.err{color:var(--red);}
+  .hint.ok{color:var(--green);}
+
+  /* ===================== 输入 / 输出区 ===================== */
+  .io-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+  .io-act{display:flex;gap:7px;flex-wrap:wrap;}
+
+  textarea{
+    display:block;width:100%;resize:vertical;
+    font:inherit;font-size:14px;line-height:1.7;
+    padding:13px 14px;border-radius:14px;
+    border:1px solid rgba(148,163,184,.42);background:#fff;color:var(--text);
+    transition:border-color .2s var(--ease),box-shadow .2s var(--ease);
+  }
+  textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.16);}
+  textarea::placeholder{color:#cbd5e1;}
+  #input{min-height:230px;}
+  #output{min-height:190px;background:#fbfdff;}
+  textarea:read-only{cursor:text;}
+  .out-empty{color:var(--text-mute);}
+
+  /* ===================== 按钮 ===================== */
+  .btn{
+    appearance:none;cursor:pointer;font:inherit;font-size:13.5px;font-weight:700;
+    padding:9px 15px;border-radius:12px;border:1px solid rgba(59,130,246,.28);
+    color:var(--blue-dd);background:#fff;
+    transition:transform .18s var(--ease),box-shadow .24s var(--ease),background .24s var(--ease);
+    white-space:nowrap;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(59,130,246,.18);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
+  .btn.mini{padding:7px 12px;font-size:12.5px;border-radius:10px;}
+  .btn.primary{
+    color:#fff;border-color:transparent;
+    background:linear-gradient(140deg,#60a5fa,#3b82f6 55%,#ec4899);
+    box-shadow:0 6px 16px rgba(59,130,246,.26);
+  }
+  .btn.primary:hover{box-shadow:0 10px 24px rgba(59,130,246,.32);}
+
+  /* 操作按钮网格 */
+  .act-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(168px,100%),1fr));gap:9px;}
+  .act-grid .btn{text-align:left;padding:11px 13px;font-size:13px;line-height:1.35;white-space:normal;}
+  .act-grid .btn .sub{display:block;font-size:11px;font-weight:600;color:var(--text-mute);margin-top:3px;letter-spacing:0;}
+  .act-grid .btn:hover .sub{color:var(--blue-d);}
+  .act-grid .btn.danger{color:var(--red);border-color:rgba(225,29,72,.24);}
+  .act-grid .btn.danger:hover{box-shadow:0 6px 16px rgba(225,29,72,.14);}
+  .act-grid .btn.danger .sub{color:rgba(225,29,72,.7);}
+
+  /* ===================== 标签页 ===================== */
+  .tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:14px;margin-bottom:16px;
+    background:#eef4ff;border:1px solid rgba(59,130,246,.20);}
+  .tabs button{
+    appearance:none;border:0;cursor:pointer;font:inherit;font-size:13px;font-weight:700;
+    color:var(--text-dim);background:transparent;padding:9px 14px;border-radius:11px;
+    transition:background .18s var(--ease),color .18s var(--ease),box-shadow .18s var(--ease);
+    white-space:nowrap;flex:1 1 auto;
+  }
+  .tabs button[aria-selected="true"]{background:#fff;color:var(--blue-dd);box-shadow:0 2px 8px rgba(59,130,246,.18);}
+  .tabs button:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+
+  /* 分段控件（JSON 缩进选择） */
+  .seg{display:inline-flex;flex-wrap:wrap;gap:3px;padding:3px;border-radius:13px;
+    background:#eef4ff;border:1px solid rgba(59,130,246,.20);}
+  .seg button{
+    appearance:none;border:0;cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;
+    color:var(--text-dim);background:transparent;padding:7px 12px;border-radius:10px;white-space:nowrap;
+    transition:background .18s var(--ease),color .18s var(--ease),box-shadow .18s var(--ease);
+  }
+  .seg button[aria-pressed="true"]{background:#fff;color:var(--blue-dd);box-shadow:0 2px 8px rgba(59,130,246,.18);}
+  .opt-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+  .opt-row .lbl{font-size:12.5px;font-weight:600;color:var(--text-dim);}
+
+  /* ===================== 统计指标 ===================== */
+  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(116px,100%),1fr));gap:8px;margin-top:14px;}
+  .stat{padding:10px 12px;border-radius:13px;background:#fff;border:1px solid rgba(148,163,184,.22);min-width:0;}
+  .stat .k{font-size:11px;color:var(--text-mute);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stat .v{font-size:16px;font-weight:800;color:var(--blue-dd);font-variant-numeric:tabular-nums;line-height:1.2;}
+  .stat.alt .v{color:var(--pink-d);}
+  .stat.dim .v{color:var(--text-dim);font-size:14px;}
+
+  /* ===================== Toast ===================== */
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(6px);
+    z-index:60;display:flex;align-items:center;gap:12px;
+    padding:11px 12px 11px 16px;border-radius:14px;
+    background:rgba(30,41,59,.95);color:#fff;font-size:13px;font-weight:600;
+    box-shadow:0 14px 36px rgba(15,23,42,.30);
+    opacity:0;pointer-events:none;transition:opacity .22s var(--ease),transform .22s var(--ease);
+    max-width:min(92vw,560px);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+  .toast button{
+    appearance:none;border:0;cursor:pointer;font:inherit;font-size:12.5px;font-weight:800;
+    color:#fff;background:rgba(255,255,255,.18);padding:5px 12px;border-radius:9px;flex:0 0 auto;
+  }
+  .toast button:hover{background:rgba(255,255,255,.30);}
+
+  .footnote{margin:22px 0 0;text-align:center;font-size:11.5px;color:var(--text-mute);letter-spacing:.04em;}
+
+  /* ===================== 响应式 ===================== */
+  @media (max-width:560px){
+    .app{padding:16px 12px 48px;}
+    .panel{padding:14px;}
+    .tabs button{font-size:12.5px;padding:8px 10px;}
+    .act-grid{grid-template-columns:1fr;}
+    .stats{grid-template-columns:repeat(auto-fill,minmax(min(104px,100%),1fr));}
+    .toast{left:12px;right:12px;bottom:14px;transform:translateY(6px);max-width:none;}
+    .toast.show{transform:translateY(0);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important;transition-duration:.001ms !important;}
+  }
+</style>
+</head>
+<body>
+<div class="aura" aria-hidden="true"></div>
+<div class="app">
+  <a class="back" href="../index.html">‹ 返回工具箱</a>
+
+  <header class="card title-bar">
+    <h1 class="page-title">文本工具箱</h1>
+    <p class="page-sub">实时统计 · 大小写 · 清洗排序 · 编码解码 · JSON</p>
+  </header>
+
+  <!-- ===================== 输入 ===================== -->
+  <section class="card panel" aria-label="输入">
+    <div class="io-head">
+      <p class="sec-title">输入</p>
+      <div class="io-act">
+        <button class="btn mini" type="button" id="pasteBtn">粘贴</button>
+        <button class="btn mini" type="button" id="undoBtn" disabled>撤回上一步</button>
+        <button class="btn mini" type="button" id="demoBtn">示例文本</button>
+        <button class="btn mini" type="button" id="clearInputBtn">清空</button>
+      </div>
+    </div>
+    <textarea id="input" spellcheck="false" autocomplete="off"
+      placeholder="把要处理的文本粘贴或输入到这里，下方统计与右侧操作都会实时生效…"></textarea>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <!-- ===================== 操作 ===================== -->
+  <section class="card panel" aria-label="操作">
+    <div class="tabs" id="tabs" role="tablist" aria-label="工具分类">
+      <button type="button" role="tab" data-tab="case" aria-selected="true">大小写</button>
+      <button type="button" role="tab" data-tab="clean" aria-selected="false">清洗 · 排序</button>
+      <button type="button" role="tab" data-tab="code" aria-selected="false">编码 · 解码</button>
+      <button type="button" role="tab" data-tab="json" aria-selected="false">JSON</button>
+    </div>
+
+    <!-- 大小写 -->
+    <div class="tab-pane" id="pane-case" role="tabpanel" aria-label="大小写">
+      <div class="act-grid">
+        <button class="btn" type="button" data-op="upper">全部大写<span class="sub">hello → HELLO</span></button>
+        <button class="btn" type="button" data-op="lower">全部小写<span class="sub">HELLO → hello</span></button>
+        <button class="btn" type="button" data-op="title">每词首字母大写<span class="sub">hello world → Hello World</span></button>
+        <button class="btn" type="button" data-op="sentence">每句首字母大写<span class="sub">hi. ok! → Hi. Ok!</span></button>
+        <button class="btn" type="button" data-op="swapcase">反转大小写<span class="sub">aBc → AbC</span></button>
+      </div>
+      <p class="hint">「每词首字母大写」按连续的英文字母序列处理，其余字符保持原样；「每句首字母大写」以 <code>. ! ? 。 ！ ？</code> 作为句子边界。</p>
+    </div>
+
+    <!-- 清洗 · 排序 -->
+    <div class="tab-pane" id="pane-clean" role="tabpanel" aria-label="清洗与排序" hidden>
+      <div class="act-grid">
+        <button class="btn" type="button" data-op="dedupFirst">按行去重<span class="sub">保留首次出现</span></button>
+        <button class="btn" type="button" data-op="dedupLast">按行去重<span class="sub">保留最后一次</span></button>
+        <button class="btn" type="button" data-op="sortAsc">按行排序<span class="sub">字典序 · 区分大小写</span></button>
+        <button class="btn" type="button" data-op="sortAscCI">按行排序<span class="sub">字典序 · 忽略大小写</span></button>
+        <button class="btn" type="button" data-op="sortLen">按行排序<span class="sub">按长度 · 短的在前</span></button>
+        <button class="btn" type="button" data-op="reverseLines">反转行序<span class="sub">最后一行变第一行</span></button>
+        <button class="btn" type="button" data-op="dropEmpty">删除空行<span class="sub">整行只有空白也算空行</span></button>
+        <button class="btn" type="button" data-op="trimLines">去除每行首尾空白<span class="sub">空格 / Tab</span></button>
+        <button class="btn" type="button" data-op="collapseBlank">合并连续空行<span class="sub">多行空行压成一行</span></button>
+        <button class="btn" type="button" data-op="stripSpaces">去掉所有空白<span class="sub">含行内空格与换行</span></button>
+        <button class="btn" type="button" data-op="toFull">半角转全角<span class="sub">ＡＢＣ１２３ ，！</span></button>
+        <button class="btn" type="button" data-op="toHalf">全角转半角<span class="sub">ＡＢＣ１２３ → ABC123</span></button>
+      </div>
+      <p class="hint">全半角只处理<strong>全角 ASCII 变体</strong>（<code>U+FF01–U+FF5E</code> ↔ <code>U+0021–U+007E</code>，偏移 <code>0xFEE0</code>）与全角空格 <code>U+3000</code>。<br>
+        <strong>会被转换</strong>：<code>，！？：；（）＆～</code> —— 它们本就是全角 ASCII 变体（<code>，</code>=U+FF0C、<code>！</code>=U+FF01、<code>～</code>=U+FF5E…），去全角后变成 <code>,!?:;()&amp;~</code>。<br>
+        <strong>不会被转换</strong>：<code>。、《》&ldquo;&rdquo;&lsquo;&rsquo;&hellip;&mdash;</code> —— 它们分别位于中文标点区（U+3002、U+3001、U+300A/300B）与通用标点区（U+201C/201D、U+2018/2019、U+2026、U+2014），都不落在上述区间内。</p>
+    </div>
+
+    <!-- 编码 · 解码 -->
+    <div class="tab-pane" id="pane-code" role="tabpanel" aria-label="编码与解码" hidden>
+      <div class="act-grid">
+        <button class="btn" type="button" data-op="b64enc">Base64 编码<span class="sub">按 UTF-8 编码</span></button>
+        <button class="btn" type="button" data-op="b64dec">Base64 解码<span class="sub">支持中文与 emoji</span></button>
+        <button class="btn" type="button" data-op="urlEnc">URL 编码<span class="sub">encodeURIComponent</span></button>
+        <button class="btn" type="button" data-op="urlDec">URL 解码<span class="sub">decodeURIComponent</span></button>
+        <button class="btn" type="button" data-op="htmlEnc">HTML 转义<span class="sub">&amp; &lt; &gt; " ' 转实体</span></button>
+        <button class="btn" type="button" data-op="htmlDec">HTML 反转义<span class="sub">实体还原为字符</span></button>
+        <button class="btn" type="button" data-op="uniEnc">Unicode 转义<span class="sub">非 ASCII 转 \uXXXX</span></button>
+        <button class="btn" type="button" data-op="uniDec">Unicode 反转义<span class="sub">\uXXXX 还原为字符</span></button>
+      </div>
+      <p class="hint">Base64 与 UTF-8 编解码为本地自写实现（不依赖 <code>btoa</code> / <code>TextEncoder</code> 的兼容行为）；解码遇到非法字符或残缺字节序列会<strong>直接报错</strong>，不会静默丢弃。</p>
+    </div>
+
+    <!-- JSON -->
+    <div class="tab-pane" id="pane-json" role="tabpanel" aria-label="JSON" hidden>
+      <div class="opt-row">
+        <span class="lbl">缩进</span>
+        <div class="seg" id="indentSeg" role="group" aria-label="缩进">
+          <button type="button" data-indent="2" aria-pressed="true">2 空格</button>
+          <button type="button" data-indent="4" aria-pressed="false">4 空格</button>
+          <button type="button" data-indent="tab" aria-pressed="false">Tab</button>
+        </div>
+      </div>
+      <div class="act-grid">
+        <button class="btn" type="button" data-op="jsonFmt">格式化 / 美化<span class="sub">按上方缩进重排</span></button>
+        <button class="btn" type="button" data-op="jsonMin">压缩为一行<span class="sub">去掉所有多余空白</span></button>
+        <button class="btn" type="button" data-op="jsonCheck">校验合法性<span class="sub">出错时定位行列</span></button>
+        <button class="btn" type="button" data-op="jsonStr">转义为 JSON 字符串<span class="sub">外层加引号并转义</span></button>
+        <button class="btn" type="button" data-op="jsonUnstr">去掉 JSON 字符串的转义<span class="sub">还原为原始文本</span></button>
+      </div>
+      <p class="hint">「格式化 / 压缩」会先校验再输出；对象键的先后顺序按原样保留，不做排序。</p>
+    </div>
+  </section>
+
+  <!-- ===================== 结果 ===================== -->
+  <section class="card panel" aria-label="结果">
+    <div class="io-head">
+      <p class="sec-title">结果<span class="st-x" id="outInfo"></span></p>
+      <div class="io-act">
+        <button class="btn mini primary" type="button" id="copyBtn">复制</button>
+        <button class="btn mini" type="button" id="toInputBtn">回填到输入</button>
+        <button class="btn mini" type="button" id="downloadBtn">下载 .txt</button>
+        <button class="btn mini" type="button" id="clearOutBtn">清空</button>
+      </div>
+    </div>
+    <textarea id="output" readonly spellcheck="false"
+      placeholder="点上方任意操作按钮，处理结果会出现在这里。"></textarea>
+    <p class="hint" id="outMsg" role="status"></p>
+  </section>
+
+  <p class="footnote">本地离线运行 · 零外部依赖 · 文本不会离开你的浏览器</p>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  /* ===================== 通用 ===================== */
+  function $(id) { return document.getElementById(id); }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function cmpStr(a, b) { return a < b ? -1 : (a > b ? 1 : 0); }
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  function todayStamp() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  /** 数字千分位（仅用于展示统计值） */
+  function fmtNum(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  /** 按 Unicode 码点计数（emoji 等代理对算 1 个）。等价于 Array.from(s).length，
+      但零额外数组分配，供大文本统计与行排序反复调用。 */
+  function cpLength(s) {
+    var n = 0, i, c;
+    for (i = 0; i < s.length; i++) {
+      c = s.charCodeAt(i);
+      if (c >= 0xD800 && c <= 0xDBFF && i + 1 < s.length) {
+        var c2 = s.charCodeAt(i + 1);
+        if (c2 >= 0xDC00 && c2 <= 0xDFFF) { i++; }
+      }
+      n++;
+    }
+    return n;
+  }
+
+  /** 逐个「码点」遍历：fn(codePoint, 该码点对应的原始子串) */
+  function forEachCodePoint(text, fn) {
+    var i = 0, n = text.length, c, c2, cp;
+    while (i < n) {
+      c = text.charCodeAt(i);
+      if (c >= 0xD800 && c <= 0xDBFF && i + 1 < n) {
+        c2 = text.charCodeAt(i + 1);
+        if (c2 >= 0xDC00 && c2 <= 0xDFFF) {
+          cp = 0x10000 + ((c - 0xD800) << 10) + (c2 - 0xDC00);
+          fn(cp, text.substr(i, 2));
+          i += 2;
+          continue;
+        }
+      }
+      fn(c, text.charAt(i));
+      i++;
+    }
+  }
+
+  /* ===================== 汉字判定表 =====================
+     用显式码点区间，便于逐条复算。区间依据 Unicode 15 CJK 区块划分。 */
+  var HAN_RANGES = [
+    [0x3400, 0x4DBF],     // 扩展 A
+    [0x4E00, 0x9FFF],     // 基本区（CJK Unified Ideographs）
+    [0xF900, 0xFAFF],     // 兼容表意文字
+    [0x20000, 0x2A6DF],   // 扩展 B
+    [0x2A700, 0x2EE5F],   // 扩展 C / D / E / F / I
+    [0x30000, 0x323AF],   // 扩展 G / H
+    [0x3005, 0x3005],     // 々（叠字号）
+    [0x3007, 0x3007]      // 〇
+  ];
+
+  function isHan(cp) {
+    for (var i = 0; i < HAN_RANGES.length; i++) {
+      if (cp >= HAN_RANGES[i][0] && cp <= HAN_RANGES[i][1]) { return true; }
+    }
+    return false;
+  }
+
+  /* ===================== 统计内核 ===================== */
+  var WORD_RE = /[A-Za-z][A-Za-z'’-]*/g;   // 英文单词（含撇号与连字符，首字符必须是字母）
+  var NUM_RE = /[0-9]+/g;                  // 数字串
+  var LINE_SPLIT = /\r\n|\r|\n/;
+
+  /** 按 Unicode 标准手算 UTF-8 字节数（与 utf8Encode 的产物长度一致） */
+  function utf8ByteLength(str) {
+    var n = 0, i, c, c2;
+    for (i = 0; i < str.length; i++) {
+      c = str.charCodeAt(i);
+      if (c < 0x80) { n += 1; }
+      else if (c < 0x800) { n += 2; }
+      else if (c >= 0xD800 && c <= 0xDBFF) {
+        c2 = (i + 1 < str.length) ? str.charCodeAt(i + 1) : 0;
+        if (c2 >= 0xDC00 && c2 <= 0xDFFF) { n += 4; i++; }   // 合法代理对 → 1 个码点 4 字节
+        else { n += 3; }                                     // 孤立高位代理 → U+FFFD 3 字节
+      }
+      else if (c >= 0xDC00 && c <= 0xDFFF) { n += 3; }        // 孤立低位代理 → U+FFFD 3 字节
+      else { n += 3; }
+    }
+    return n;
+  }
+
+  /** 九项统计。所有口径见文件头注释。 */
+  function countStats(text) {
+    var chars = 0, charsNoWs = 0, han = 0;
+
+    forEachCodePoint(text, function (cp, ch) {
+      chars++;
+      if (!/\s/.test(ch)) { charsNoWs++; }
+      if (isHan(cp)) { han++; }
+    });
+
+    var words = (text.match(WORD_RE) || []).length;
+    var nums = (text.match(NUM_RE) || []).length;
+
+    var lines = 0, nonEmpty = 0, i;
+    if (text !== '') {
+      var arr = text.split(LINE_SPLIT);
+      lines = arr.length;
+      for (i = 0; i < arr.length; i++) {
+        if (arr[i].trim() !== '') { nonEmpty++; }
+      }
+    }
+
+    // 阅读时长：按 300 字词/分钟估算（汉字与英文单词同权）
+    var seconds = Math.round((han + words) / 300 * 60);
+
+    return {
+      chars: chars, charsNoWs: charsNoWs, han: han, words: words, nums: nums,
+      lines: lines, nonEmpty: nonEmpty, bytes: utf8ByteLength(text), seconds: seconds
+    };
+  }
+
+  function readTimeText(secs) {
+    if (secs <= 0) { return '0 秒'; }
+    if (secs < 60) { return secs + ' 秒'; }
+    var m = Math.floor(secs / 60), s = secs % 60;
+    return s ? (m + ' 分 ' + s + ' 秒') : (m + ' 分钟');
+  }
+
+  /* ===================== 大小写 ===================== */
+  function opUpper(t) { return t.toUpperCase(); }
+  function opLower(t) { return t.toLowerCase(); }
+
+  /** 每个连续英文字母序列：首字母大写、其余小写；非字母字符原样保留 */
+  function opTitle(t) {
+    return t.replace(/[A-Za-z]+/g, function (w) {
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    });
+  }
+
+  /** 整串先转小写，再把「句首」（开头，或 . ! ? 。 ！ ？ 之后的第一个字母）大写 */
+  function opSentence(t) {
+    return t.toLowerCase().replace(/(^|[.!?。！？]\s*)([a-z])/g, function (m, p1, p2) {
+      return p1 + p2.toUpperCase();
+    });
+  }
+
+  /** 逐字符反转大小写（非字母不动） */
+  function opSwapCase(t) {
+    return t.replace(/[A-Za-z]/g, function (c) {
+      return c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase();
+    });
+  }
+
+  /* ===================== 全角 / 半角 =====================
+     仅处理「全角 ASCII 变体」U+FF01–U+FF5E ↔ U+0021–U+007E（偏移 0xFEE0）
+     与全角空格 U+3000 ↔ U+0020。中文标点（。、《》 等）不在该区间，保持原样。 */
+  function toFullWidth(t) {
+    var out = '', i, c;
+    for (i = 0; i < t.length; i++) {
+      c = t.charCodeAt(i);
+      if (c === 0x20) { out += '\u3000'; }
+      else if (c >= 0x21 && c <= 0x7E) { out += String.fromCharCode(c + 0xFEE0); }
+      else { out += t.charAt(i); }
+    }
+    return out;
+  }
+
+  function toHalfWidth(t) {
+    var out = '', i, c;
+    for (i = 0; i < t.length; i++) {
+      c = t.charCodeAt(i);
+      if (c === 0x3000) { out += ' '; }
+      else if (c >= 0xFF01 && c <= 0xFF5E) { out += String.fromCharCode(c - 0xFEE0); }
+      else { out += t.charAt(i); }
+    }
+    return out;
+  }
+
+  /* ===================== 行操作 =====================
+     统一以 LF（\n）作为输出换行符：输入里的 CRLF / CR 都会被规范化为 LF。 */
+  function splitLines(t) { return t.split(LINE_SPLIT); }
+  function joinLines(arr) { return arr.join('\n'); }
+
+  /** 按行去重，保留首次出现 */
+  function opDedupFirst(t) {
+    var seen = Object.create(null), out = [];
+    splitLines(t).forEach(function (l) {
+      if (!seen[l]) { seen[l] = 1; out.push(l); }
+    });
+    return joinLines(out);
+  }
+
+  /** 按行去重，保留最后一次出现（结果的相对顺序按原文件最后一次出现的位置） */
+  function opDedupLast(t) {
+    var lines = splitLines(t);
+    var seen = Object.create(null), out = [], i;
+    for (i = lines.length - 1; i >= 0; i--) {
+      if (!seen[lines[i]]) { seen[lines[i]] = 1; out.push(lines[i]); }
+    }
+    return joinLines(out.reverse());
+  }
+
+  /** 字典序排序（按 UTF-16 码元比较，不使用 localeCompare 以保证跨浏览器一致） */
+  function opSortAsc(t) {
+    return joinLines(splitLines(t).sort(function (a, b) { return cmpStr(a, b); }));
+  }
+
+  /** 字典序排序，忽略大小写；完全相同则按原串比较以保证确定性 */
+  function opSortAscCI(t) {
+    return joinLines(splitLines(t).sort(function (a, b) {
+      return cmpStr(a.toLowerCase(), b.toLowerCase()) || cmpStr(a, b);
+    }));
+  }
+
+  /** 按「码点长度」升序；长度相同按原串字典序 */
+  function opSortLen(t) {
+    return joinLines(splitLines(t).sort(function (a, b) {
+      return (cpLength(a) - cpLength(b)) || cmpStr(a, b);
+    }));
+  }
+
+  function opReverseLines(t) { return joinLines(splitLines(t).reverse()); }
+
+  function opDropEmpty(t) {
+    return joinLines(splitLines(t).filter(function (l) { return l.trim() !== ''; }));
+  }
+
+  function opTrimLines(t) {
+    return joinLines(splitLines(t).map(function (l) { return l.trim(); }));
+  }
+
+  /** 连续多行空行压缩为一行 */
+  function opCollapseBlank(t) {
+    var out = [], prevBlank = false;
+    splitLines(t).forEach(function (l) {
+      var blank = (l.trim() === '');
+      if (blank && prevBlank) { return; }
+      out.push(l);
+      prevBlank = blank;
+    });
+    return joinLines(out);
+  }
+
+  /** 去掉所有空白字符（含行内空格、Tab 与换行） */
+  function opStripSpaces(t) { return t.replace(/\s+/g, ''); }
+  /* ===================== UTF-8 编解码（自写，不依赖 TextEncoder） ===================== */
+  /** 字符串 → UTF-8 字节数组（数字数组）。孤立代理按替换字符 U+FFFD 处理。 */
+  function utf8Encode(str) {
+    var out = [], i, c, c2, cp;
+    for (i = 0; i < str.length; i++) {
+      c = str.charCodeAt(i);
+      if (c < 0x80) {
+        out.push(c);
+      } else if (c < 0x800) {
+        out.push(0xC0 | (c >> 6), 0x80 | (c & 63));
+      } else if (c >= 0xD800 && c <= 0xDBFF) {
+        c2 = (i + 1 < str.length) ? str.charCodeAt(i + 1) : 0;
+        if (c2 >= 0xDC00 && c2 <= 0xDFFF) {
+          cp = 0x10000 + ((c - 0xD800) << 10) + (c2 - 0xDC00);
+          out.push(0xF0 | (cp >> 18), 0x80 | ((cp >> 12) & 63),
+                   0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+          i++;
+        } else {
+          out.push(0xEF, 0xBF, 0xBD);
+        }
+      } else if (c >= 0xDC00 && c <= 0xDFFF) {
+        out.push(0xEF, 0xBF, 0xBD);
+      } else {
+        out.push(0xE0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+      }
+    }
+    return out;
+  }
+
+  /** UTF-8 字节数组 → 字符串。严格校验：非法/残缺序列直接抛错 */
+  function utf8Decode(bytes) {
+    var out = [], i = 0, n = bytes.length, b, b2, b3, b4, cp;
+    while (i < n) {
+      b = bytes[i];
+      if (b < 0x80) {
+        out.push(String.fromCharCode(b)); i += 1;
+      } else if (b >= 0xC2 && b <= 0xDF) {
+        if (i + 1 >= n) { throw new Error('UTF-8 字节序列不完整（在第 ' + (i + 1) + ' 字节处截断）'); }
+        b2 = bytes[i + 1];
+        if ((b2 & 0xC0) !== 0x80) { throw new Error('不是合法的 UTF-8 字节序列（第 ' + (i + 2) + ' 字节）'); }
+        out.push(String.fromCharCode(((b & 0x1F) << 6) | (b2 & 0x3F)));
+        i += 2;
+      } else if (b >= 0xE0 && b <= 0xEF) {
+        if (i + 2 >= n) { throw new Error('UTF-8 字节序列不完整（在第 ' + (i + 1) + ' 字节处截断）'); }
+        b2 = bytes[i + 1]; b3 = bytes[i + 2];
+        if ((b2 & 0xC0) !== 0x80 || (b3 & 0xC0) !== 0x80) {
+          throw new Error('不是合法的 UTF-8 字节序列（第 ' + (i + 1) + ' 字节起）');
+        }
+        cp = ((b & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F);
+        if (cp < 0x800) { throw new Error('不是合法的 UTF-8 字节序列（第 ' + (i + 1) + ' 字节起：过长编码）'); }
+        if (cp >= 0xD800 && cp <= 0xDFFF) {
+          throw new Error('不是合法的 UTF-8 字节序列（第 ' + (i + 1) +
+                          ' 字节起：不允许把代理码点单独编码进来）');
+        }
+        out.push(String.fromCharCode(cp));
+        i += 3;
+      } else if (b >= 0xF0 && b <= 0xF4) {
+        if (i + 3 >= n) { throw new Error('UTF-8 字节序列不完整（在第 ' + (i + 1) + ' 字节处截断）'); }
+        b2 = bytes[i + 1]; b3 = bytes[i + 2]; b4 = bytes[i + 3];
+        if ((b2 & 0xC0) !== 0x80 || (b3 & 0xC0) !== 0x80 || (b4 & 0xC0) !== 0x80) {
+          throw new Error('不是合法的 UTF-8 字节序列（第 ' + (i + 1) + ' 字节起）');
+        }
+        cp = ((b & 0x07) << 18) | ((b2 & 0x3F) << 12) | ((b3 & 0x3F) << 6) | (b4 & 0x3F);
+        if (cp < 0x10000 || cp > 0x10FFFF) {
+          throw new Error('不是合法的 UTF-8 字节序列（第 ' + (i + 1) + ' 字节起：超出 Unicode 范围）');
+        }
+        cp -= 0x10000;
+        out.push(String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF)));
+        i += 4;
+      } else {
+        throw new Error('不是合法的 UTF-8 字节序列（第 ' + (i + 1) + ' 字节 0x' +
+                        b.toString(16).toUpperCase() + '）');
+      }
+    }
+    return out.join('');
+  }
+
+  /* ===================== Base64（自写，不依赖 btoa / atob） ===================== */
+  var B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+  function bytesToBase64(bytes) {
+    var parts = [], i, b0, b1, b2;
+    for (i = 0; i < bytes.length; i += 3) {
+      b0 = bytes[i];
+      b1 = (i + 1 < bytes.length) ? bytes[i + 1] : -1;
+      b2 = (i + 2 < bytes.length) ? bytes[i + 2] : -1;
+      parts.push(
+        B64_CHARS.charAt(b0 >> 2),
+        B64_CHARS.charAt(((b0 & 3) << 4) | (b1 < 0 ? 0 : b1 >> 4)),
+        b1 < 0 ? '=' : B64_CHARS.charAt(((b1 & 15) << 2) | (b2 < 0 ? 0 : b2 >> 6)),
+        b2 < 0 ? '=' : B64_CHARS.charAt(b2 & 63)
+      );
+    }
+    return parts.join('');
+  }
+
+  /** Base64 → 字节数组。严格校验 字符集 / 长度 / 填充结构，非法即抛错。
+      容忍内部空白，也容忍**完全省略填充**的写法（如 "YWJ" 自动补 "="）；
+      但不接受**填充数量写错**的写法（如 "A="、"AB="）。 */
+  function base64ToBytes(str) {
+    var s = String(str).replace(/[\s\uFEFF]+/g, '');
+    if (s === '') { return []; }
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s)) {
+      throw new Error('包含非法 Base64 字符（只允许 A–Z a–z 0–9 + / 和末尾的 =）');
+    }
+    var body = s.replace(/=+$/, '');
+    var padCount = s.length - body.length;
+    if (body === '') {
+      throw new Error('Base64 没有有效数据（只有填充符号 =）');
+    }
+    if (body.length % 4 === 1) {
+      throw new Error('Base64 长度不合法（有效字符数除以 4 余 1，可能是内容被截断）');
+    }
+    var need = (4 - body.length % 4) % 4;
+    if (padCount > 0 && padCount !== need) {
+      throw new Error('Base64 填充不合法（有 ' + body.length + ' 个有效字符，应带 ' +
+                      need + ' 个 "="，实际带了 ' + padCount + ' 个）');
+    }
+    while (s.length % 4 !== 0) { s += '='; }
+
+    var bytes = [], i, k, n, pad, ch;
+    for (i = 0; i < s.length; i += 4) {
+      n = 0; pad = 0;
+      for (k = 0; k < 4; k++) {
+        ch = s.charAt(i + k);
+        if (ch === '=') { pad++; n = n << 6; }
+        else { n = (n << 6) | B64_CHARS.indexOf(ch); }
+      }
+      bytes.push((n >> 16) & 255);
+      if (pad < 2) { bytes.push((n >> 8) & 255); }
+      if (pad < 1) { bytes.push(n & 255); }
+    }
+    return bytes;
+  }
+
+  /* ===================== URL / HTML / Unicode ===================== */
+  function opUrlDecode(t) {
+    try {
+      return decodeURIComponent(t);
+    } catch (e) {
+      throw new Error('不是合法的 URL 编码（存在残缺的 % 转义，例如单独的 % 或 %ZZ）');
+    }
+  }
+
+  var HTML_ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+  /** HTML 转义：单次扫描替换，不会对已替换出的 & 二次转义 */
+  function opHtmlEscape(t) {
+    return t.replace(/[&<>"']/g, function (c) { return HTML_ESC_MAP[c]; });
+  }
+
+  var HTML_ENT_MAP = { lt: '<', gt: '>', quot: '"', '#39': "'", amp: '&' };
+
+  /** HTML 反转义：只做一次解码（"&amp;lt;" → "&lt;"，不会继续解成 "<"） */
+  function opHtmlUnescape(t) {
+    return t.replace(/&(lt|gt|quot|#39|amp);/g, function (m, e) { return HTML_ENT_MAP[e]; });
+  }
+
+  /** Unicode 转义：码元 > 0x7E 的字符写成 \uXXXX（代理对会写成两个 \uXXXX） */
+  function opUnicodeEscape(t) {
+    var out = '', i, c;
+    for (i = 0; i < t.length; i++) {
+      c = t.charCodeAt(i);
+      out += (c > 0x7E)
+        ? ('\\u' + ('0000' + c.toString(16).toUpperCase()).slice(-4))
+        : t.charAt(i);
+    }
+    return out;
+  }
+
+  function opUnicodeUnescape(t) {
+    return t.replace(/\\u([0-9a-fA-F]{4})/g, function (m, h) {
+      return String.fromCharCode(parseInt(h, 16));
+    });
+  }
+
+  /* ===================== JSON ===================== */
+  function jsonTypeName(v) {
+    if (v === null) { return 'null'; }
+    if (Array.isArray(v)) { return '数组'; }
+    var map = { string: '字符串', number: '数字', boolean: '布尔值', object: '对象' };
+    return map[typeof v] || (typeof v);
+  }
+
+  function posToLineCol(text, pos) {
+    if (!(pos >= 0)) { pos = 0; }
+    if (pos > text.length) { pos = text.length; }
+    var lines = text.slice(0, pos).split(LINE_SPLIT);
+    return { line: lines.length, col: lines[lines.length - 1].length + 1 };
+  }
+
+  /** 自写的 JSON 扫描器，**只在原生 JSON.parse 失败时**用来定位第一个语法错误的偏移。
+      正确性以原生 JSON.parse 为准；本函数只负责给出人话提示与位置。
+      找不到问题时正常返回（调用方会退回原生错误信息）。 */
+  function locateJsonError(s) {
+    var i = 0, n = s.length;
+
+    function fail(msg, pos) {
+      throw { jsonPos: (typeof pos === 'number' ? pos : i), jsonMsg: msg };
+    }
+
+    function at(k) { return i < n ? s.charAt(i) : null; }
+
+    function skipWs() {
+      while (i < n) {
+        var c = s.charAt(i);
+        if (c === ' ' || c === '\t' || c === '\n' || c === '\r') { i++; } else { break; }
+      }
+    }
+
+    function show(c) { return c === null ? '内容结束' : ('“' + c + '”'); }
+
+    function parseValue() {
+      skipWs();
+      var c = at(i);
+      if (c === null) { fail('内容意外结束，缺少一个值'); }
+      if (c === '{') { parseObject(); return; }
+      if (c === '[') { parseArray(); return; }
+      if (c === '"') { parseString(); return; }
+      if (c === '-' || (c >= '0' && c <= '9')) { parseNumber(); return; }
+      if (s.substr(i, 4) === 'true') { i += 4; return; }
+      if (s.substr(i, 5) === 'false') { i += 5; return; }
+      if (s.substr(i, 4) === 'null') { i += 4; return; }
+      fail('此处应为一个值（字符串 / 数字 / 对象 / 数组 / true / false / null），实际遇到 ' + show(c));
+    }
+
+    function parseObject() {
+      i++;
+      skipWs();
+      if (at(i) === '}') { i++; return; }
+      for (;;) {
+        skipWs();
+        var c = at(i);
+        if (c === null) { fail('对象没有闭合，缺少 }'); }
+        if (c !== '"') {
+          fail('对象的键必须是双引号字符串，实际遇到 ' + show(c) +
+               (c === "'" ? '（JSON 不允许单引号）' : ''));
+        }
+        parseString();
+        skipWs();
+        if (at(i) !== ':') { fail('键之后应该跟冒号 :，实际遇到 ' + show(at(i))); }
+        i++;
+        parseValue();
+        skipWs();
+        c = at(i);
+        if (c === ',') {
+          i++;
+          skipWs();
+          if (at(i) === '}') { fail('对象末尾多了一个逗号（尾逗号不是合法 JSON）'); }
+          continue;
+        }
+        if (c === '}') { i++; return; }
+        if (c === null) { fail('对象没有闭合，缺少 }'); }
+        fail('对象里期望 “,” 或 “}”，实际遇到 ' + show(c));
+      }
+    }
+
+    function parseArray() {
+      i++;
+      skipWs();
+      if (at(i) === ']') { i++; return; }
+      for (;;) {
+        parseValue();
+        skipWs();
+        var c = at(i);
+        if (c === ',') {
+          i++;
+          skipWs();
+          if (at(i) === ']') { fail('数组末尾多了一个逗号（尾逗号不是合法 JSON）'); }
+          continue;
+        }
+        if (c === ']') { i++; return; }
+        if (c === null) { fail('数组没有闭合，缺少 ]'); }
+        fail('数组里期望 “,” 或 “]”，实际遇到 ' + show(c));
+      }
+    }
+
+    function parseString() {
+      var start = i;
+      i++;
+      for (;;) {
+        if (i >= n) { fail('字符串没有闭合，缺少收尾的双引号', start); }
+        var c = s.charAt(i);
+        if (c === '"') { i++; return; }
+        if (c === '\\') {
+          var e = s.charAt(i + 1);
+          if (e === 'u') {
+            if (!/^[0-9a-fA-F]{4}$/.test(s.substr(i + 2, 4))) {
+              fail('\\u 转义后面必须跟 4 位十六进制数字');
+            }
+            i += 6;
+          } else if ('"\\/bfnrt'.indexOf(e) >= 0) {
+            i += 2;
+          } else {
+            fail('字符串里的转义序列 \\' + e + ' 不合法');
+          }
+          continue;
+        }
+        if (s.charCodeAt(i) < 0x20) {
+          fail('字符串里不能直接出现控制字符（需写成 \\n、\\t 这类转义）');
+        }
+        i++;
+      }
+    }
+
+    function parseNumber() {
+      var start = i;
+      if (at(i) === '-') { i++; }
+      var c = at(i);
+      if (c === '0') { i++; }
+      else if (c !== null && c >= '1' && c <= '9') {
+        while (i < n && s.charAt(i) >= '0' && s.charAt(i) <= '9') { i++; }
+      } else {
+        fail('数字格式不合法（负号后必须跟数字）', start);
+      }
+      if (at(i) === '.') {
+        i++;
+        c = at(i);
+        if (c === null || c < '0' || c > '9') { fail('小数点后必须有数字'); }
+        while (i < n && s.charAt(i) >= '0' && s.charAt(i) <= '9') { i++; }
+      }
+      c = at(i);
+      if (c === 'e' || c === 'E') {
+        i++;
+        c = at(i);
+        if (c === '+' || c === '-') { i++; }
+        c = at(i);
+        if (c === null || c < '0' || c > '9') { fail('指数部分必须有数字'); }
+        while (i < n && s.charAt(i) >= '0' && s.charAt(i) <= '9') { i++; }
+      }
+    }
+
+    parseValue();
+    skipWs();
+    if (i < n) { fail('合法 JSON 之后还有多余内容 ' + show(at(i))); }
+  }
+
+  /** 解析 JSON，失败时抛出带行列信息的错误 */
+  function jsonParseOrThrow(t) {
+    var s = String(t).trim();
+    if (s === '') { throw new Error('输入为空，没有可解析的 JSON'); }
+    try {
+      return JSON.parse(s);
+    } catch (e) {
+      var raw = (e && e.message) ? String(e.message) : String(e);
+      var pos = null, reason = '';
+      var m = /position\s+(\d+)/i.exec(raw);
+      if (m) {
+        pos = parseInt(m[1], 10);
+      } else {
+        // V8 对「尾逗号」等错误不再给 position，用自写扫描器补上定位与中文原因
+        try {
+          locateJsonError(s);
+        } catch (le) {
+          if (le && typeof le.jsonPos === 'number') {
+            pos = le.jsonPos;
+            reason = le.jsonMsg || '';
+          }
+        }
+      }
+      if (pos !== null) {
+        var lc = posToLineCol(s, pos);
+        throw new Error('JSON 语法错误：第 ' + lc.line + ' 行第 ' + lc.col +
+                        ' 列（字符位置 ' + pos + '）' + (reason ? ' —— ' + reason : ''));
+      }
+      throw new Error('JSON 语法错误：' + raw);
+    }
+  }
+
+  var indentSel = '2';
+  function indentValue() {
+    return indentSel === 'tab' ? '\t' : parseInt(indentSel, 10);
+  }
+
+  function opJsonFormat(t) {
+    return JSON.stringify(jsonParseOrThrow(t), null, indentValue());
+  }
+
+  function opJsonMinify(t) {
+    return JSON.stringify(jsonParseOrThrow(t));
+  }
+
+  function jsonSummary(v) {
+    if (v === null) { return '顶层是 null'; }
+    if (Array.isArray(v)) { return '顶层是数组，共 ' + v.length + ' 项'; }
+    if (typeof v === 'object') {
+      var ks = Object.keys(v);
+      return '顶层是对象，共 ' + ks.length + ' 个键' +
+             (ks.length ? '（' + ks.slice(0, 5).join('、') + (ks.length > 5 ? ' …' : '') + '）' : '');
+    }
+    if (typeof v === 'string') { return '顶层是字符串，长度 ' + cpLength(v); }
+    return '顶层是' + jsonTypeName(v) + '（' + String(v) + '）';
+  }
+
+  /** 校验：不改动文本，只在结果区给出结论 */
+  function opJsonCheck(t) {
+    var v = jsonParseOrThrow(t);
+    return { text: t, msg: '✓ JSON 合法 · ' + jsonSummary(v), msgType: 'ok' };
+  }
+
+  function opJsonUnstring(t) {
+    var s = String(t).trim();
+    if (s === '') { throw new Error('输入为空'); }
+    var v;
+    try {
+      v = JSON.parse(s);
+    } catch (e) {
+      throw new Error('不是合法的 JSON 字符串（应形如 "abc\\n" 这样带双引号的字面量）');
+    }
+    if (typeof v !== 'string') {
+      throw new Error('输入不是 JSON 字符串（解析出来是' + jsonTypeName(v) + '）');
+    }
+    return v;
+  }
+
+  /* ===================== 操作注册表 ===================== */
+  var OPS = {
+    /* —— 大小写 —— */
+    upper:    { label: '全部大写', run: opUpper },
+    lower:    { label: '全部小写', run: opLower },
+    title:    { label: '每词首字母大写', run: opTitle },
+    sentence: { label: '每句首字母大写', run: opSentence },
+    swapcase: { label: '反转大小写', run: opSwapCase },
+
+    /* —— 清洗 · 排序 —— */
+    dedupFirst:    { label: '按行去重（保留首次）', run: opDedupFirst },
+    dedupLast:     { label: '按行去重（保留最后）', run: opDedupLast },
+    sortAsc:       { label: '按行排序（区分大小写）', run: opSortAsc },
+    sortAscCI:     { label: '按行排序（忽略大小写）', run: opSortAscCI },
+    sortLen:       { label: '按行排序（按长度）', run: opSortLen },
+    reverseLines:  { label: '反转行序', run: opReverseLines },
+    dropEmpty:     { label: '删除空行', run: opDropEmpty },
+    trimLines:     { label: '去除每行首尾空白', run: opTrimLines },
+    collapseBlank: { label: '合并连续空行', run: opCollapseBlank },
+    stripSpaces:   { label: '去掉所有空白', run: opStripSpaces },
+    toFull:        { label: '半角转全角', run: toFullWidth },
+    toHalf:        { label: '全角转半角', run: toHalfWidth },
+
+    /* —— 编码 · 解码 —— */
+    b64enc:  { label: 'Base64 编码', run: function (t) { return bytesToBase64(utf8Encode(t)); } },
+    b64dec:  { label: 'Base64 解码', run: function (t) { return utf8Decode(base64ToBytes(t)); } },
+    urlEnc:  { label: 'URL 编码', run: function (t) { return encodeURIComponent(t); } },
+    urlDec:  { label: 'URL 解码', run: opUrlDecode },
+    htmlEnc: { label: 'HTML 转义', run: opHtmlEscape },
+    htmlDec: { label: 'HTML 反转义', run: opHtmlUnescape },
+    uniEnc:  { label: 'Unicode 转义', run: opUnicodeEscape },
+    uniDec:  { label: 'Unicode 反转义', run: opUnicodeUnescape },
+
+    /* —— JSON —— */
+    jsonFmt:   { label: 'JSON 格式化', run: opJsonFormat },
+    jsonMin:   { label: 'JSON 压缩', run: opJsonMinify },
+    jsonCheck: { label: 'JSON 校验', run: opJsonCheck },
+    jsonStr:   { label: '转义为 JSON 字符串', run: function (t) { return JSON.stringify(String(t)); } },
+    jsonUnstr: { label: '去掉 JSON 字符串转义', run: opJsonUnstring }
+  };
+
+  /* ===================== Toast ===================== */
+  var toastTimer = null;
+
+  function showToast(msg, ms) {
+    var el = $('toast');
+    $('toastMsg').textContent = msg;
+    el.hidden = false;
+    void el.offsetWidth;
+    el.classList.add('show');
+    if (toastTimer) { clearTimeout(toastTimer); }
+    toastTimer = setTimeout(function () {
+      el.classList.remove('show');
+      toastTimer = setTimeout(function () { el.hidden = true; }, 240);
+    }, ms || 2200);
+  }
+
+  /* ===================== 渲染 ===================== */
+  function setMsg(msg, type) {
+    var el = $('outMsg');
+    el.textContent = msg || '';
+    el.className = 'hint' + (msg ? (type === 'err' ? ' err' : (type === 'ok' ? ' ok' : '')) : '');
+  }
+
+  function renderStats() {
+    var s = countStats($('input').value);
+    var rows = [
+      ['字符数', fmtNum(s.chars), ''],
+      ['字符（不含空白）', fmtNum(s.charsNoWs), ''],
+      ['汉字', fmtNum(s.han), 'alt'],
+      ['英文单词', fmtNum(s.words), 'alt'],
+      ['数字串', fmtNum(s.nums), ''],
+      ['行数', fmtNum(s.lines), ''],
+      ['非空行', fmtNum(s.nonEmpty), ''],
+      ['UTF-8 字节', fmtNum(s.bytes), 'dim'],
+      ['阅读时长', readTimeText(s.seconds), 'dim']
+    ];
+    var html = '';
+    for (var i = 0; i < rows.length; i++) {
+      html += '<div class="stat ' + rows[i][2] + '">' +
+                '<div class="k" title="' + esc(rows[i][0]) + '">' + esc(rows[i][0]) + '</div>' +
+                '<div class="v">' + esc(rows[i][1]) + '</div>' +
+              '</div>';
+    }
+    $('stats').innerHTML = html;
+  }
+
+  function showResult(label, text, msg, msgType) {
+    $('output').value = text || '';
+    $('outInfo').textContent = label
+      ? (label + ' · 输出 ' + fmtNum(cpLength(text || '')) + ' 字符')
+      : '';
+    setMsg(msg, msgType);
+  }
+
+  function selectTab(name) {
+    var btns = $('tabs').getElementsByTagName('button'), i;
+    for (i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-selected', btns[i].getAttribute('data-tab') === name ? 'true' : 'false');
+    }
+    ['case', 'clean', 'code', 'json'].forEach(function (n) {
+      $('pane-' + n).hidden = (n !== name);
+    });
+  }
+  /* ===================== 输入历史（一步撤回） ===================== */
+  var inputHistory = [];
+  var HISTORY_MAX = 20;
+
+  function pushHistory() {
+    var v = $('input').value;
+    if (inputHistory.length && inputHistory[inputHistory.length - 1] === v) { return; }
+    inputHistory.push(v);
+    if (inputHistory.length > HISTORY_MAX) { inputHistory.shift(); }
+    updateUndoBtn();
+  }
+
+  function undoInput() {
+    if (!inputHistory.length) { return; }
+    $('input').value = inputHistory.pop();
+    updateUndoBtn();
+    renderStats();
+    showToast('已撤回上一步输入');
+  }
+
+  function updateUndoBtn() {
+    $('undoBtn').disabled = inputHistory.length === 0;
+  }
+
+  /* ===================== 执行操作 ===================== */
+  function runOp(name) {
+    var op = OPS[name];
+    if (!op) { return; }
+    pushHistory();
+
+    var res;
+    try {
+      res = op.run($('input').value);
+    } catch (e) {
+      var m = (e && e.message) ? e.message : String(e);
+      showResult(op.label, '', m, 'err');
+      showToast('操作失败：' + m, 3400);
+      return;
+    }
+
+    var text = '', msg = '', msgType = '';
+    if (typeof res === 'string') {
+      text = res;
+    } else if (res && typeof res === 'object') {
+      text = (typeof res.text === 'string') ? res.text : '';
+      msg = res.msg || '';
+      msgType = res.msgType || '';
+    }
+    showResult(op.label, text, msg, msgType);
+  }
+
+  function onOpClick(e) {
+    var b = e.target;
+    while (b && b.tagName !== 'BUTTON') { b = b.parentNode; }
+    if (!b || b.tagName !== 'BUTTON') { return; }
+    var op = b.getAttribute('data-op');
+    if (op) { runOp(op); }
+  }
+
+  /* ===================== 结果区操作 ===================== */
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ta.setSelectionRange(0, ta.value.length); } catch (e) { /* 忽略 */ }
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function copyText(text, cb) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { cb(true); },
+        function () { cb(fallbackCopy(text)); }
+      );
+    } else {
+      cb(fallbackCopy(text));
+    }
+  }
+
+  function copyOut() {
+    var txt = $('output').value;
+    if (!txt) { showToast('结果区是空的，没有可复制的内容'); return; }
+    copyText(txt, function (ok) {
+      showToast(ok ? '已复制到剪贴板' : '浏览器拦截了自动复制，请手动全选复制（Ctrl+C）');
+    });
+  }
+
+  function pasteIn() {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function (t) {
+        if (t) {
+          pushHistory();
+          $('input').value = t;
+          renderStats();
+          showToast('已粘贴 ' + fmtNum(cpLength(t)) + ' 字符');
+        } else {
+          showToast('剪贴板里没有文本内容');
+        }
+      }, function () {
+        showToast('浏览器未授权读取剪贴板，请用 Ctrl+V 直接粘贴到输入框');
+        $('input').focus();
+      });
+    } else {
+      showToast('当前浏览器不支持一键读取剪贴板，请用 Ctrl+V 直接粘贴到输入框');
+      $('input').focus();
+    }
+  }
+
+  function toInput() {
+    var txt = $('output').value;
+    if (!txt) { showToast('结果区是空的，没有可回填的内容'); return; }
+    if (txt === $('input').value) { showToast('结果与输入相同，无需回填'); return; }
+    pushHistory();
+    $('input').value = txt;
+    renderStats();
+    showToast('已回填到输入区，可继续加工（也能「撤回上一步」退回）', 2800);
+  }
+
+  function downloadOut() {
+    var txt = $('output').value;
+    if (!txt) { showToast('结果区是空的，没有可下载的内容'); return; }
+    var blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '文本工具箱_' + todayStamp() + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    showToast('已下载 .txt 文件');
+  }
+
+  function clearInput() {
+    if ($('input').value === '') { showToast('输入区已经是空的'); return; }
+    pushHistory();
+    $('input').value = '';
+    renderStats();
+    showToast('已清空输入（可「撤回上一步」恢复）');
+  }
+
+  function clearOutput() {
+    if ($('output').value === '') { showToast('结果区已经是空的'); return; }
+    showResult('', '', '', '');
+    showToast('已清空结果');
+  }
+
+  /* ===================== 示例文本 ===================== */
+  var DEMO_TEXT = [
+    'Hello world! 这是第一行，包含中文、English 和数字 12345。',
+    '第二行：测试全半角 ＡＢＣ１２３ ，！＃',
+    '重复行',
+    '重复行',
+    '',
+    '最后一行 line four — it\'s a test.',
+    '{"name":"工具箱","tools":["万年历","贷款计算器","科学计算器","记账本","文本工具箱"]}'
+  ].join('\n');
+
+  function loadDemo() {
+    pushHistory();
+    $('input').value = DEMO_TEXT;
+    renderStats();
+    showToast('已载入示例文本');
+  }
+
+  /* ===================== 事件绑定 ===================== */
+  function bindAll() {
+    $('input').addEventListener('input', renderStats);
+
+    $('pasteBtn').addEventListener('click', pasteIn);
+    $('undoBtn').addEventListener('click', undoInput);
+    $('demoBtn').addEventListener('click', loadDemo);
+    $('clearInputBtn').addEventListener('click', clearInput);
+
+    $('copyBtn').addEventListener('click', copyOut);
+    $('toInputBtn').addEventListener('click', toInput);
+    $('downloadBtn').addEventListener('click', downloadOut);
+    $('clearOutBtn').addEventListener('click', clearOutput);
+
+    /* 标签页切换 */
+    $('tabs').addEventListener('click', function (e) {
+      var b = e.target;
+      while (b && b !== this && b.tagName !== 'BUTTON') { b = b.parentNode; }
+      if (b && b !== this && b.getAttribute('data-tab')) {
+        selectTab(b.getAttribute('data-tab'));
+      }
+    });
+
+    /* JSON 缩进选择 */
+    $('indentSeg').addEventListener('click', function (e) {
+      var b = e.target;
+      while (b && b !== this && b.tagName !== 'BUTTON') { b = b.parentNode; }
+      if (!b || b === this || !b.getAttribute('data-indent')) { return; }
+      indentSel = b.getAttribute('data-indent');
+      var btns = this.getElementsByTagName('button'), i;
+      for (i = 0; i < btns.length; i++) {
+        btns[i].setAttribute('aria-pressed', btns[i] === b ? 'true' : 'false');
+      }
+    });
+
+    /* 操作按钮：只挂在四个面板上，避免全局委托 */
+    var panes = document.querySelectorAll('.tab-pane'), i;
+    for (i = 0; i < panes.length; i++) {
+      panes[i].addEventListener('click', onOpClick);
+    }
+  }
+
+  /* ===================== 初始化 ===================== */
+  function init() {
+    selectTab('case');
+    bindAll();
+    renderStats();
+    updateUndoBtn();
+    setMsg('', '');
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
